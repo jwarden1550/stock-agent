@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Stock Research Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .card-header h1 {
+            font-size: 1.5rem;
+            color: #3fb950;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .card-header p {
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .form-box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 32px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 11px 14px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .field input:focus {
+            border-color: #3fb950;
+        }
+
+        .field .hint {
+            font-size: 0.75rem;
+            color: #484f58;
+            margin-top: 5px;
+        }
+
+        .error {
+            background: #2d1b1b;
+            border: 1px solid #f85149;
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: #f85149;
+            font-size: 0.85rem;
+            margin-bottom: 18px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #238636;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 4px;
+        }
+
+        .btn:hover { background: #2ea043; }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+
+        .footer a {
+            color: #3fb950;
+            text-decoration: none;
+        }
+
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <h1>Stock Research Agent</h1>
+            <p>Create your account</p>
+        </div>
+        <div class="form-box">
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+            <form method="POST" action="/register">
+                <div class="field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" autocomplete="email" required />
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="new-password" required />
+                    <div class="hint">Minimum 8 characters</div>
+                </div>
+                <button type="submit" class="btn">Create Account</button>
+            </form>
+        </div>
+        <div class="footer">
+            Already have an account? <a href="/login">Sign in</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import os
+import bcrypt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -12,8 +13,17 @@ def init_db():
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS reports (
                     id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
                     goal TEXT NOT NULL,
                     report TEXT NOT NULL,
                     tool_calls INTEGER NOT NULL,
@@ -22,22 +32,55 @@ def init_db():
             """)
         conn.commit()
 
-def save_report(goal: str, report: str, tool_calls: int) -> int:
+# ---------- Auth ----------
+
+def create_user(email: str, password: str):
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO reports (goal, report, tool_calls) VALUES (%s, %s, %s) RETURNING id",
-                (goal, report, tool_calls)
+                "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
+                (email, password_hash)
+            )
+            user_id = cur.fetchone()[0]
+        conn.commit()
+    return user_id
+
+def get_user_by_email(email: str):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+    return dict(row) if row else None
+
+def get_user_by_id(user_id: int):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+    return dict(row) if row else None
+
+def verify_password(password: str, password_hash: str) -> bool:
+    return bcrypt.checkpw(password.encode(), password_hash.encode())
+
+# ---------- Reports ----------
+
+def save_report(goal: str, report: str, tool_calls: int, user_id: int = None) -> int:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO reports (goal, report, tool_calls, user_id) VALUES (%s, %s, %s, %s) RETURNING id",
+                (goal, report, tool_calls, user_id)
             )
             row_id = cur.fetchone()[0]
         conn.commit()
     return row_id
 
-def get_reports(limit: int = 20):
+def get_reports(user_id: int, limit: int = 20):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, goal, report, tool_calls, created_at FROM reports ORDER BY created_at DESC LIMIT %s",
-                (limit,)
+                "SELECT id, goal, report, tool_calls, created_at FROM reports WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
+                (user_id, limit)
             )
             return [dict(r) for r in cur.fetchall()]

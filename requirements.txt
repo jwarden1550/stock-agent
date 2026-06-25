@@ -1,4 +1,6 @@
 flask
+flask-login
+bcrypt
 groq
 yfinance
 python-dotenv
