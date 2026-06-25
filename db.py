@@ -50,6 +50,9 @@ def init_db():
                 )
             """)
             cur.execute("""
+                ALTER TABLE reports ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)
+            """)
+            cur.execute("""
                 ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS cost_per_share NUMERIC NOT NULL DEFAULT 0
             """)
             cur.execute("""
