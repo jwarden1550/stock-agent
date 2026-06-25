@@ -52,6 +52,9 @@ def init_db():
             cur.execute("""
                 ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS cost_per_share NUMERIC NOT NULL DEFAULT 0
             """)
+            cur.execute("""
+                ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS purchased_at DATE DEFAULT CURRENT_DATE
+            """)
         conn.commit()
 
 # ---------- Auth ----------
@@ -151,28 +154,28 @@ def get_portfolio(user_id: int):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, ticker, shares, cost_per_share FROM portfolio WHERE user_id = %s ORDER BY created_at ASC",
+                "SELECT id, ticker, shares, cost_per_share, purchased_at FROM portfolio WHERE user_id = %s ORDER BY created_at ASC",
                 (user_id,)
             )
             return [dict(r) for r in cur.fetchall()]
 
-def add_position(user_id: int, ticker: str, shares: float, cost_per_share: float = 0):
+def add_position(user_id: int, ticker: str, shares: float, cost_per_share: float = 0, purchased_at: str = None):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO portfolio (user_id, ticker, shares, cost_per_share) VALUES (%s, %s, %s, %s) RETURNING id",
-                (user_id, ticker.upper(), shares, cost_per_share)
+                "INSERT INTO portfolio (user_id, ticker, shares, cost_per_share, purchased_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (user_id, ticker.upper(), shares, cost_per_share, purchased_at)
             )
             row_id = cur.fetchone()[0]
         conn.commit()
     return row_id
 
-def update_position(position_id: int, user_id: int, shares: float, cost_per_share: float):
+def update_position(position_id: int, user_id: int, shares: float, cost_per_share: float, purchased_at: str = None):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE portfolio SET shares = %s, cost_per_share = %s WHERE id = %s AND user_id = %s",
-                (shares, cost_per_share, position_id, user_id)
+                "UPDATE portfolio SET shares = %s, cost_per_share = %s, purchased_at = %s WHERE id = %s AND user_id = %s",
+                (shares, cost_per_share, purchased_at, position_id, user_id)
             )
         conn.commit()
 
