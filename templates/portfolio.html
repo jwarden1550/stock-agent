@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 
 {% block title %}Portfolio — Stock Research Agent{% endblock %}
-{% block subtitle %}Track your positions and total value{% endblock %}
+{% block subtitle %}Track your positions, cost basis, and performance{% endblock %}
 
 {% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .add-form {
         background: #161b22;
         border: 1px solid #30363d;
         border-radius: 8px;
         padding: 24px 28px;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
         display: flex;
         gap: 16px;
         align-items: flex-end;
@@ -40,18 +41,14 @@
 
     .add-form input:focus { border-color: #3fb950; }
     .add-form input::placeholder { color: #484f58; }
-    #tickerInput { width: 130px; text-transform: uppercase; }
-    #sharesInput { width: 130px; }
+    #tickerInput { width: 110px; text-transform: uppercase; }
+    #sharesInput, #costInput { width: 120px; }
 
-    .add-error {
-        font-size: 0.8rem;
-        color: #f85149;
-        margin-top: 4px;
-    }
+    .add-error { font-size: 0.8rem; color: #f85149; margin-top: 4px; }
 
     .summary-bar {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 12px;
         margin-bottom: 24px;
     }
@@ -60,65 +57,79 @@
         background: #161b22;
         border: 1px solid #30363d;
         border-radius: 8px;
-        padding: 18px 20px;
+        padding: 16px 18px;
     }
 
     .summary-card .s-label {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #484f58;
         margin-bottom: 6px;
     }
 
-    .summary-card .s-value {
-        font-size: 1.3rem;
-        color: #e6edf3;
-    }
-
+    .summary-card .s-value { font-size: 1.15rem; color: #e6edf3; }
     .summary-card .s-value.up { color: #3fb950; }
     .summary-card .s-value.down { color: #f85149; }
+    .summary-card .s-sub { font-size: 0.75rem; color: #484f58; margin-top: 3px; }
 
-    .positions-table {
-        width: 100%;
-        border-collapse: collapse;
+    /* Total portfolio chart */
+    .chart-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+    }
+
+    .chart-card-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8b949e;
+        margin-bottom: 16px;
+    }
+
+    .chart-wrapper { position: relative; height: 220px; }
+
+    /* Positions table */
+    .table-wrap {
         background: #161b22;
         border: 1px solid #30363d;
         border-radius: 8px;
         overflow: hidden;
+        margin-bottom: 24px;
     }
 
-    .positions-table th {
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
         text-align: left;
-        padding: 12px 16px;
-        font-size: 0.72rem;
+        padding: 11px 14px;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #484f58;
         border-bottom: 1px solid #30363d;
         background: #0d1117;
+        white-space: nowrap;
     }
 
-    .positions-table td {
-        padding: 14px 16px;
-        font-size: 0.88rem;
+    td {
+        padding: 13px 14px;
+        font-size: 0.86rem;
         color: #cdd9e5;
         border-bottom: 1px solid #1c2128;
         vertical-align: middle;
+        white-space: nowrap;
     }
 
-    .positions-table tr:last-child td { border-bottom: none; }
-    .positions-table tr:hover td { background: #1c2128; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
 
-    .positions-table .ticker-col {
-        color: #3fb950;
-        font-weight: bold;
-        letter-spacing: 1px;
-        font-size: 0.92rem;
-    }
-
-    .positions-table .up { color: #3fb950; }
-    .positions-table .down { color: #f85149; }
+    .t-ticker { color: #3fb950; font-weight: bold; letter-spacing: 1px; }
+    .up { color: #3fb950; }
+    .down { color: #f85149; }
 
     .empty-state {
         text-align: center;
@@ -126,6 +137,67 @@
         color: #484f58;
         font-size: 0.95rem;
     }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 200;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 28px;
+        width: 90%;
+        max-width: 640px;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #3fb950;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: #8b949e;
+        font-size: 1.3rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .modal-close:hover { color: #e6edf3; }
+
+    .modal-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .modal-stat .ms-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #484f58; margin-bottom: 4px; }
+    .modal-stat .ms-value { font-size: 0.95rem; color: #e6edf3; }
+    .modal-stat .ms-value.up { color: #3fb950; }
+    .modal-stat .ms-value.down { color: #f85149; }
+
+    .modal-chart-wrapper { position: relative; height: 240px; }
 </style>
 {% endblock %}
 
@@ -133,11 +205,15 @@
 <div class="add-form">
     <div class="field">
         <label for="tickerInput">Ticker</label>
-        <input type="text" id="tickerInput" placeholder="e.g. AAPL" maxlength="10" />
+        <input type="text" id="tickerInput" placeholder="AAPL" maxlength="10" />
     </div>
     <div class="field">
         <label for="sharesInput">Shares</label>
-        <input type="number" id="sharesInput" placeholder="e.g. 10" min="0.0001" step="any" />
+        <input type="number" id="sharesInput" placeholder="10" min="0.0001" step="any" />
+    </div>
+    <div class="field">
+        <label for="costInput">Cost / Share ($)</label>
+        <input type="number" id="costInput" placeholder="0.00" min="0" step="any" />
         <div class="add-error" id="addError"></div>
     </div>
     <button class="btn-green" onclick="addPosition()">Add Position</button>
@@ -145,110 +221,314 @@
 
 <div class="summary-bar" id="summaryBar" style="display:none">
     <div class="summary-card">
-        <div class="s-label">Total Value</div>
-        <div class="s-value" id="totalValue">—</div>
+        <div class="s-label">Total Cost Basis</div>
+        <div class="s-value" id="sCost">—</div>
+    </div>
+    <div class="summary-card">
+        <div class="s-label">Market Value</div>
+        <div class="s-value" id="sValue">—</div>
+    </div>
+    <div class="summary-card">
+        <div class="s-label">Total P&amp;L</div>
+        <div class="s-value" id="sPnl">—</div>
+        <div class="s-sub" id="sPnlPct"></div>
     </div>
     <div class="summary-card">
         <div class="s-label">Day Change</div>
-        <div class="s-value" id="dayChange">—</div>
+        <div class="s-value" id="sDayChange">—</div>
     </div>
     <div class="summary-card">
         <div class="s-label">Positions</div>
-        <div class="s-value" id="positionCount">—</div>
+        <div class="s-value" id="sCount">—</div>
     </div>
 </div>
 
-<table class="positions-table" id="positionsTable" style="display:none">
-    <thead>
-        <tr>
-            <th>Ticker</th>
-            <th>Shares</th>
-            <th>Price</th>
-            <th>Value</th>
-            <th>Day Change</th>
-            <th>30d</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody id="positionsBody"></tbody>
-</table>
+<div class="chart-card" id="totalChartCard" style="display:none">
+    <div class="chart-card-title">30-Day Portfolio Value vs Cost Basis</div>
+    <div class="chart-wrapper">
+        <canvas id="totalChart"></canvas>
+    </div>
+</div>
+
+<div class="table-wrap" id="tableWrap" style="display:none">
+    <table>
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Shares</th>
+                <th>Cost / Share</th>
+                <th>Cost Basis</th>
+                <th>Price</th>
+                <th>Mkt Value</th>
+                <th>P&amp;L $</th>
+                <th>P&amp;L %</th>
+                <th>Day %</th>
+                <th>30d %</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="positionsBody"></tbody>
+    </table>
+</div>
 
 <div class="empty-state" id="emptyState">
-    No positions yet. Add a ticker and share count above.
+    No positions yet. Add a ticker, share count, and cost per share above.
+</div>
+
+<!-- Individual position chart modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">Position Chart</h3>
+            <button class="modal-close" onclick="closeModalBtn()">&#x2715;</button>
+        </div>
+        <div class="modal-stats" id="modalStats"></div>
+        <div class="modal-chart-wrapper">
+            <canvas id="positionChart"></canvas>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    let totalChartInstance = null;
+    let positionChartInstance = null;
+
     document.getElementById('tickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sharesInput').focus(); });
-    document.getElementById('sharesInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPosition(); });
+    document.getElementById('sharesInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('costInput').focus(); });
+    document.getElementById('costInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPosition(); });
+
+    function fmt(n, dec = 2) { return n != null ? n.toFixed(dec) : '—'; }
+    function fmtDollar(n) { return n != null ? '$' + Math.abs(n).toFixed(2) : '—'; }
+    function sign(n) { return n >= 0 ? '+' : '-'; }
+    function cls(n) { return n >= 0 ? 'up' : 'down'; }
 
     async function loadPortfolio() {
         const res = await fetch('/portfolio/data');
         const positions = await res.json();
         renderPortfolio(positions);
-    }
-
-    function fmt(n, decimals = 2) {
-        return n != null ? n.toFixed(decimals) : '—';
+        if (positions.length) loadTotalChart();
     }
 
     function renderPortfolio(positions) {
-        const table = document.getElementById('positionsTable');
         const empty = document.getElementById('emptyState');
         const summary = document.getElementById('summaryBar');
-        const tbody = document.getElementById('positionsBody');
+        const tableWrap = document.getElementById('tableWrap');
 
         if (!positions.length) {
-            table.style.display = 'none';
-            summary.style.display = 'none';
             empty.style.display = 'block';
+            summary.style.display = 'none';
+            tableWrap.style.display = 'none';
+            document.getElementById('totalChartCard').style.display = 'none';
             return;
         }
 
         empty.style.display = 'none';
-        table.style.display = 'table';
         summary.style.display = 'grid';
+        tableWrap.style.display = 'block';
 
-        let totalValue = 0;
-        let totalDayChange = 0;
+        let totalCost = 0, totalValue = 0, totalDayChange = 0;
 
-        tbody.innerHTML = positions.map(p => {
-            const value = p.price != null ? p.price * p.shares : null;
-            const dayChangeVal = (p.price != null && p.change_percent != null)
-                ? (p.price / (1 + p.change_percent / 100)) * p.change_percent / 100 * p.shares
+        const rows = positions.map(p => {
+            const costBasis = p.cost_per_share * p.shares;
+            const mktValue = p.price != null ? p.price * p.shares : null;
+            const pnl = mktValue != null ? mktValue - costBasis : null;
+            const pnlPct = costBasis > 0 && pnl != null ? (pnl / costBasis) * 100 : null;
+            const dayChange = (p.price != null && p.change_percent != null)
+                ? (p.price / (1 + p.change_percent / 100)) * (p.change_percent / 100) * p.shares
                 : null;
 
-            if (value != null) totalValue += value;
-            if (dayChangeVal != null) totalDayChange += dayChangeVal;
+            if (costBasis) totalCost += costBasis;
+            if (mktValue != null) totalValue += mktValue;
+            if (dayChange != null) totalDayChange += dayChange;
 
-            const changeClass = (p.change_percent || 0) >= 0 ? 'up' : 'down';
+            const pnlClass = (pnl || 0) >= 0 ? 'up' : 'down';
+            const dayClass = (p.change_percent || 0) >= 0 ? 'up' : 'down';
             const perfClass = (p.perf || 0) >= 0 ? 'up' : 'down';
-            const changeSign = (p.change_percent || 0) >= 0 ? '+' : '';
-            const perfSign = (p.perf || 0) >= 0 ? '+' : '';
 
             return `<tr>
-                <td class="ticker-col">${p.ticker}</td>
+                <td class="t-ticker" style="cursor:pointer" onclick="openPositionChart(${p.id}, '${p.ticker}', ${p.shares}, ${p.cost_per_share})">${p.ticker}</td>
                 <td>${p.shares}</td>
+                <td>${p.cost_per_share > 0 ? '$' + fmt(p.cost_per_share) : '—'}</td>
+                <td>${costBasis > 0 ? '$' + fmt(costBasis) : '—'}</td>
                 <td>${p.price != null ? '$' + fmt(p.price) : '—'}</td>
-                <td>${value != null ? '$' + fmt(value) : '—'}</td>
-                <td class="${changeClass}">${p.change_percent != null ? changeSign + fmt(p.change_percent) + '%' : '—'}</td>
-                <td class="${perfClass}">${p.perf != null ? perfSign + fmt(p.perf) + '%' : '—'}</td>
+                <td>${mktValue != null ? '$' + fmt(mktValue) : '—'}</td>
+                <td class="${pnlClass}">${pnl != null ? sign(pnl) + '$' + fmt(Math.abs(pnl)) : '—'}</td>
+                <td class="${pnlClass}">${pnlPct != null ? sign(pnlPct) + fmt(Math.abs(pnlPct)) + '%' : '—'}</td>
+                <td class="${dayClass}">${p.change_percent != null ? sign(p.change_percent) + fmt(Math.abs(p.change_percent)) + '%' : '—'}</td>
+                <td class="${perfClass}">${p.perf != null ? sign(p.perf) + fmt(Math.abs(p.perf)) + '%' : '—'}</td>
                 <td><button class="btn-danger" onclick="deletePosition(${p.id})">Delete</button></td>
             </tr>`;
-        }).join('');
+        });
 
-        document.getElementById('totalValue').textContent = '$' + fmt(totalValue);
-        const dcClass = totalDayChange >= 0 ? 'up' : 'down';
-        const dcSign = totalDayChange >= 0 ? '+' : '';
-        document.getElementById('dayChange').className = 's-value ' + dcClass;
-        document.getElementById('dayChange').textContent = dcSign + '$' + fmt(Math.abs(totalDayChange));
-        document.getElementById('positionCount').textContent = positions.length;
+        document.getElementById('positionsBody').innerHTML = rows.join('');
+
+        const totalPnl = totalValue - totalCost;
+        const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : null;
+
+        document.getElementById('sCost').textContent = '$' + fmt(totalCost);
+        document.getElementById('sValue').textContent = '$' + fmt(totalValue);
+
+        const pnlEl = document.getElementById('sPnl');
+        pnlEl.textContent = sign(totalPnl) + '$' + fmt(Math.abs(totalPnl));
+        pnlEl.className = 's-value ' + cls(totalPnl);
+
+        const pnlPctEl = document.getElementById('sPnlPct');
+        pnlPctEl.textContent = totalPnlPct != null ? sign(totalPnlPct) + fmt(Math.abs(totalPnlPct)) + '%' : '';
+
+        const dayEl = document.getElementById('sDayChange');
+        dayEl.textContent = sign(totalDayChange) + '$' + fmt(Math.abs(totalDayChange));
+        dayEl.className = 's-value ' + cls(totalDayChange);
+
+        document.getElementById('sCount').textContent = positions.length;
+    }
+
+    async function loadTotalChart() {
+        const res = await fetch('/portfolio/chart');
+        const data = await res.json();
+        if (!data.length) return;
+
+        document.getElementById('totalChartCard').style.display = 'block';
+
+        const labels = data.map(d => d.date);
+        const values = data.map(d => d.value);
+        const costLine = data.map(d => d.cost_basis);
+        const isUp = values[values.length - 1] >= costLine[0];
+
+        if (totalChartInstance) totalChartInstance.destroy();
+
+        const ctx = document.getElementById('totalChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        totalChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Portfolio Value',
+                        data: values,
+                        borderColor: isUp ? '#3fb950' : '#f85149',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Cost Basis',
+                        data: costLine,
+                        borderColor: '#484f58',
+                        borderWidth: 1.5,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+                    tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(2)}` } }
+                },
+                scales: {
+                    x: { ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } }, grid: { color: '#1c2128' } },
+                    y: { ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } }, grid: { color: '#1c2128' } }
+                }
+            }
+        });
+    }
+
+    async function openPositionChart(id, ticker, shares, costPerShare) {
+        const res = await fetch(`/portfolio/chart/${id}`);
+        const data = await res.json();
+        if (!data.length) return;
+
+        const lastValue = data[data.length - 1].value;
+        const costBasis = costPerShare * shares;
+        const pnl = lastValue - costBasis;
+        const pnlPct = costBasis > 0 ? (pnl / costBasis) * 100 : null;
+        const first = data[0].value;
+        const perf30 = ((lastValue - first) / first) * 100;
+        const isUp = pnl >= 0;
+
+        document.getElementById('modalTitle').textContent = ticker + ' — 30-Day Performance';
+        document.getElementById('modalStats').innerHTML = `
+            <div class="modal-stat"><div class="ms-label">Market Value</div><div class="ms-value">$${fmt(lastValue)}</div></div>
+            <div class="modal-stat"><div class="ms-label">Cost Basis</div><div class="ms-value">${costBasis > 0 ? '$' + fmt(costBasis) : '—'}</div></div>
+            <div class="modal-stat"><div class="ms-label">P&L $</div><div class="ms-value ${cls(pnl)}">${sign(pnl)}$${fmt(Math.abs(pnl))}</div></div>
+            ${pnlPct != null ? `<div class="modal-stat"><div class="ms-label">P&L %</div><div class="ms-value ${cls(pnlPct)}">${sign(pnlPct)}${fmt(Math.abs(pnlPct))}%</div></div>` : ''}
+            <div class="modal-stat"><div class="ms-label">30d Change</div><div class="ms-value ${cls(perf30)}">${sign(perf30)}${fmt(Math.abs(perf30))}%</div></div>
+        `;
+
+        if (positionChartInstance) positionChartInstance.destroy();
+
+        const ctx = document.getElementById('positionChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        positionChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [
+                    {
+                        label: 'Position Value',
+                        data: data.map(d => d.value),
+                        borderColor: isUp ? '#3fb950' : '#f85149',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Cost Basis',
+                        data: data.map(d => d.cost_basis),
+                        borderColor: '#484f58',
+                        borderWidth: 1.5,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+                    tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(2)}` } }
+                },
+                scales: {
+                    x: { ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } }, grid: { color: '#1c2128' } },
+                    y: { ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } }, grid: { color: '#1c2128' } }
+                }
+            }
+        });
+
+        document.getElementById('modalOverlay').classList.add('open');
+    }
+
+    function closeModal(e) {
+        if (e.target === document.getElementById('modalOverlay')) closeModalBtn();
+    }
+
+    function closeModalBtn() {
+        document.getElementById('modalOverlay').classList.remove('open');
     }
 
     async function addPosition() {
         const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
         const shares = parseFloat(document.getElementById('sharesInput').value);
+        const cost = parseFloat(document.getElementById('costInput').value) || 0;
         const errEl = document.getElementById('addError');
         errEl.textContent = '';
 
@@ -258,13 +538,14 @@
         const res = await fetch('/portfolio/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker, shares })
+            body: JSON.stringify({ ticker, shares, cost_per_share: cost })
         });
         const data = await res.json();
         if (!res.ok) { errEl.textContent = data.error || 'Could not add position.'; return; }
 
         document.getElementById('tickerInput').value = '';
         document.getElementById('sharesInput').value = '';
+        document.getElementById('costInput').value = '';
         await loadPortfolio();
     }
 

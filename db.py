@@ -45,8 +45,12 @@ def init_db():
                     user_id INTEGER REFERENCES users(id),
                     ticker TEXT NOT NULL,
                     shares NUMERIC NOT NULL,
+                    cost_per_share NUMERIC NOT NULL DEFAULT 0,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
+            """)
+            cur.execute("""
+                ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS cost_per_share NUMERIC NOT NULL DEFAULT 0
             """)
         conn.commit()
 
@@ -147,17 +151,17 @@ def get_portfolio(user_id: int):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, ticker, shares FROM portfolio WHERE user_id = %s ORDER BY created_at ASC",
+                "SELECT id, ticker, shares, cost_per_share FROM portfolio WHERE user_id = %s ORDER BY created_at ASC",
                 (user_id,)
             )
             return [dict(r) for r in cur.fetchall()]
 
-def add_position(user_id: int, ticker: str, shares: float):
+def add_position(user_id: int, ticker: str, shares: float, cost_per_share: float = 0):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO portfolio (user_id, ticker, shares) VALUES (%s, %s, %s) RETURNING id",
-                (user_id, ticker.upper(), shares)
+                "INSERT INTO portfolio (user_id, ticker, shares, cost_per_share) VALUES (%s, %s, %s, %s) RETURNING id",
+                (user_id, ticker.upper(), shares, cost_per_share)
             )
             row_id = cur.fetchone()[0]
         conn.commit()
