@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Price Chart — Stock Research Agent{% endblock %}
+{% block subtitle %}30-day price history for any stock{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .chart-controls {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .chart-controls label {
+        display: block;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8b949e;
+        margin-bottom: 8px;
+    }
+
+    .chart-controls input {
+        padding: 10px 14px;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+        text-transform: uppercase;
+        width: 160px;
+    }
+
+    .chart-controls input:focus { border-color: #3fb950; }
+    .chart-controls input::placeholder { color: #484f58; text-transform: none; }
+
+    .chart-box {
+        display: none;
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 28px;
+    }
+
+    .chart-box.visible { display: block; }
+
+    .chart-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 20px;
+    }
+
+    .chart-title h2 {
+        font-size: 1rem;
+        color: #3fb950;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .chart-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .stat-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #484f58;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+        color: #e6edf3;
+    }
+
+    .stat-value.up { color: #3fb950; }
+    .stat-value.down { color: #f85149; }
+
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+    }
+
+    .status {
+        margin-top: 10px;
+        font-size: 0.85rem;
+        color: #8b949e;
+        min-height: 18px;
+    }
+
+    .status.error { color: #f85149; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chart-controls">
+    <div>
+        <label for="tickerInput">Ticker Symbol</label>
+        <input type="text" id="tickerInput" placeholder="e.g. AAPL" maxlength="10" />
+    </div>
+    <button class="btn-green" onclick="loadChart()">View Chart</button>
+</div>
+<div class="status" id="status"></div>
+
+<div class="chart-box" id="chartBox">
+    <div class="chart-title">
+        <h2 id="chartTitle"></h2>
+        <span id="chartSubtitle" style="font-size:0.8rem;color:#484f58"></span>
+    </div>
+    <div class="chart-stats" id="chartStats"></div>
+    <div class="chart-wrapper">
+        <canvas id="priceChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let chartInstance = null;
+
+    document.getElementById('tickerInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') loadChart();
+    });
+
+    // Pre-fill from query string
+    const params = new URLSearchParams(window.location.search);
+    const preload = params.get('ticker');
+    if (preload) {
+        document.getElementById('tickerInput').value = preload.toUpperCase();
+        loadChart();
+    }
+
+    function setStatus(msg, isError = false) {
+        const el = document.getElementById('status');
+        el.textContent = msg;
+        el.className = 'status' + (isError ? ' error' : '');
+    }
+
+    async function loadChart() {
+        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+        if (!ticker) return;
+
+        setStatus('Loading...');
+        document.getElementById('chartBox').classList.remove('visible');
+
+        const res = await fetch(`/api/prices/${ticker}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            setStatus(data.error || 'Could not load data.', true);
+            return;
+        }
+
+        setStatus('');
+        renderChart(ticker, data);
+    }
+
+    function renderChart(ticker, data) {
+        const labels = data.map(d => d.date);
+        const prices = data.map(d => d.close);
+
+        const first = prices[0];
+        const last = prices[prices.length - 1];
+        const change = ((last - first) / first * 100).toFixed(2);
+        const high = Math.max(...prices).toFixed(2);
+        const low = Math.min(...prices).toFixed(2);
+        const isUp = parseFloat(change) >= 0;
+
+        document.getElementById('chartTitle').textContent = ticker + ' — 30-Day Price';
+        document.getElementById('chartSubtitle').textContent = `${labels[0]} → ${labels[labels.length - 1]}`;
+        document.getElementById('chartStats').innerHTML = `
+            <div class="stat">
+                <span class="stat-label">Current</span>
+                <span class="stat-value">$${last.toFixed(2)}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">30d Change</span>
+                <span class="stat-value ${isUp ? 'up' : 'down'}">${isUp ? '+' : ''}${change}%</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">30d High</span>
+                <span class="stat-value">$${high}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">30d Low</span>
+                <span class="stat-value">$${low}</span>
+            </div>
+        `;
+
+        if (chartInstance) chartInstance.destroy();
+
+        const color = isUp ? '#3fb950' : '#f85149';
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.2)' : 'rgba(248,81,73,0.2)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    data: prices,
+                    borderColor: color,
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: {
+                    callbacks: {
+                        label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                    }
+                }},
+                scales: {
+                    x: {
+                        ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } },
+                        grid: { color: '#1c2128' }
+                    },
+                    y: {
+                        ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } },
+                        grid: { color: '#1c2128' }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('chartBox').classList.add('visible');
+    }
+</script>
+{% endblock %}

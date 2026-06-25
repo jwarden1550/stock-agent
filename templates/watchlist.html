@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist — Stock Research Agent{% endblock %}
+{% block subtitle %}Track your portfolio at a glance{% endblock %}
+
+{% block head %}
+<style>
+    .add-form {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 24px 28px;
+        margin-bottom: 28px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .add-form label {
+        display: block;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8b949e;
+        margin-bottom: 8px;
+    }
+
+    .add-form input {
+        padding: 10px 14px;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+        text-transform: uppercase;
+        width: 160px;
+    }
+
+    .add-form input:focus { border-color: #3fb950; }
+    .add-form input::placeholder { color: #484f58; text-transform: none; }
+
+    .ticker-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 14px;
+    }
+
+    .ticker-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 20px;
+        position: relative;
+        transition: border-color 0.2s;
+    }
+
+    .ticker-card:hover { border-color: #484f58; }
+
+    .ticker-card .ticker-symbol {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #3fb950;
+        letter-spacing: 1px;
+        margin-bottom: 2px;
+    }
+
+    .ticker-card .ticker-name {
+        font-size: 0.75rem;
+        color: #484f58;
+        margin-bottom: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ticker-card .ticker-price {
+        font-size: 1.4rem;
+        color: #e6edf3;
+        margin-bottom: 4px;
+    }
+
+    .ticker-card .ticker-change {
+        font-size: 0.82rem;
+        margin-bottom: 12px;
+    }
+
+    .ticker-card .ticker-change.up { color: #3fb950; }
+    .ticker-card .ticker-change.down { color: #f85149; }
+
+    .ticker-card .ticker-perf {
+        font-size: 0.78rem;
+        color: #8b949e;
+        padding-top: 12px;
+        border-top: 1px solid #30363d;
+    }
+
+    .ticker-card .ticker-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .ticker-card .ticker-actions a {
+        flex: 1;
+        text-align: center;
+        padding: 6px;
+        background: transparent;
+        color: #8b949e;
+        border: 1px solid #30363d;
+        border-radius: 5px;
+        font-size: 0.75rem;
+        text-decoration: none;
+        transition: border-color 0.2s, color 0.2s;
+    }
+
+    .ticker-card .ticker-actions a:hover { border-color: #3fb950; color: #3fb950; }
+
+    .ticker-card .delete-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: #30363d;
+        font-size: 1rem;
+        cursor: pointer;
+        line-height: 1;
+        transition: color 0.2s;
+    }
+
+    .ticker-card .delete-btn:hover { color: #f85149; }
+
+    .ticker-card.loading {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #484f58;
+        font-size: 0.95rem;
+    }
+
+    .add-error {
+        font-size: 0.8rem;
+        color: #f85149;
+        margin-top: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="add-form">
+    <div>
+        <label for="tickerInput">Add Ticker</label>
+        <input type="text" id="tickerInput" placeholder="e.g. AAPL" maxlength="10" />
+        <div class="add-error" id="addError"></div>
+    </div>
+    <button class="btn-green" onclick="addTicker()">Add</button>
+</div>
+
+<div class="ticker-grid" id="tickerGrid"></div>
+<div class="empty-state" id="emptyState" style="display:none">
+    No tickers yet. Add one above to start tracking.
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let watchlist = [];
+
+    document.getElementById('tickerInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addTicker();
+    });
+
+    async function loadWatchlist() {
+        const res = await fetch('/watchlist/data');
+        watchlist = await res.json();
+        renderGrid(watchlist);
+    }
+
+    function renderGrid(tickers) {
+        const grid = document.getElementById('tickerGrid');
+        const empty = document.getElementById('emptyState');
+        if (!tickers.length) {
+            grid.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        grid.innerHTML = tickers.map(t => cardHTML(t)).join('');
+    }
+
+    function cardHTML(t) {
+        const changeClass = t.change_percent >= 0 ? 'up' : 'down';
+        const changeSign = t.change_percent >= 0 ? '+' : '';
+        const perfSign = t.perf >= 0 ? '+' : '';
+        const perfClass = t.perf >= 0 ? 'up' : 'down';
+        return `
+            <div class="ticker-card" id="card-${t.ticker}">
+                <button class="delete-btn" onclick="removeTicker('${t.ticker}')" title="Remove">&times;</button>
+                <div class="ticker-symbol">${t.ticker}</div>
+                <div class="ticker-name">${t.name || '—'}</div>
+                <div class="ticker-price">$${t.price != null ? t.price.toFixed(2) : '—'}</div>
+                <div class="ticker-change ${changeClass}">
+                    ${t.change_percent != null ? changeSign + t.change_percent.toFixed(2) + '% today' : '—'}
+                </div>
+                <div class="ticker-perf">
+                    30d: <span class="${perfClass}">${t.perf != null ? perfSign + t.perf.toFixed(2) + '%' : '—'}</span>
+                </div>
+                <div class="ticker-actions">
+                    <a href="/chart?ticker=${t.ticker}">Chart</a>
+                    <a href="/" onclick="sessionStorage.setItem('goal','Research ${t.ticker} and give me a buy or sell recommendation')">Research</a>
+                </div>
+            </div>
+        `;
+    }
+
+    async function addTicker() {
+        const input = document.getElementById('tickerInput');
+        const errEl = document.getElementById('addError');
+        const ticker = input.value.trim().toUpperCase();
+        errEl.textContent = '';
+        if (!ticker) return;
+
+        const res = await fetch('/watchlist/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            errEl.textContent = data.error || 'Could not add ticker.';
+            return;
+        }
+        input.value = '';
+        await loadWatchlist();
+    }
+
+    async function removeTicker(ticker) {
+        await fetch(`/watchlist/${ticker}`, { method: 'DELETE' });
+        watchlist = watchlist.filter(t => t.ticker !== ticker);
+        renderGrid(watchlist);
+    }
+
+    // Pre-fill research goal if set from watchlist
+    window.addEventListener('load', () => {
+        const goal = sessionStorage.getItem('goal');
+        if (goal) {
+            sessionStorage.removeItem('goal');
+        }
+    });
+
+    loadWatchlist();
+</script>
+{% endblock %}

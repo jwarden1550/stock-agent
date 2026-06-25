@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stock Research Agent{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #238636;
+            padding-bottom: 24px;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            color: #3fb950;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: #8b949e;
+            font-size: 0.95rem;
+        }
+
+        /* Nav dropdown */
+        .nav {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+        .nav-btn {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #8b949e;
+            font-size: 0.85rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+            letter-spacing: 1px;
+        }
+
+        .nav-btn:hover {
+            border-color: #3fb950;
+            color: #e6edf3;
+        }
+
+        .nav-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            min-width: 170px;
+            z-index: 100;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .nav-menu.open { display: block; }
+
+        .nav-menu a {
+            display: block;
+            padding: 11px 18px;
+            color: #8b949e;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-menu a:hover {
+            background: #0d1117;
+            color: #e6edf3;
+        }
+
+        .nav-menu a.active {
+            color: #3fb950;
+        }
+
+        .nav-divider {
+            border-top: 1px solid #30363d;
+            margin: 4px 0;
+        }
+
+        /* Shared card style */
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 28px 32px;
+            margin-bottom: 20px;
+        }
+
+        .btn-green {
+            padding: 10px 22px;
+            background: #238636;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-green:hover { background: #2ea043; }
+        .btn-green:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+        .btn-ghost {
+            padding: 7px 14px;
+            background: transparent;
+            color: #8b949e;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-ghost:hover { border-color: #8b949e; color: #e6edf3; }
+
+        .btn-danger {
+            padding: 7px 14px;
+            background: transparent;
+            color: #8b949e;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-danger:hover { border-color: #f85149; color: #f85149; }
+
+        .error-msg {
+            background: #2d1b1b;
+            border: 1px solid #f85149;
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: #f85149;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        .page-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 14px;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Stock Research Agent</h1>
+            <p>{% block subtitle %}{% endblock %}</p>
+            <nav class="nav">
+                <button class="nav-btn" onclick="toggleNav()">&#9776; Menu</button>
+                <div class="nav-menu" id="navMenu">
+                    <a href="/" class="{% if active == 'research' %}active{% endif %}">Research</a>
+                    <a href="/history" class="{% if active == 'history' %}active{% endif %}">History</a>
+                    <a href="/watchlist" class="{% if active == 'watchlist' %}active{% endif %}">Watchlist</a>
+                    <a href="/chart" class="{% if active == 'chart' %}active{% endif %}">Price Chart</a>
+                    <div class="nav-divider"></div>
+                    <a href="/logout">Sign Out</a>
+                </div>
+            </nav>
+        </header>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        function toggleNav() {
+            document.getElementById('navMenu').classList.toggle('open');
+        }
+        document.addEventListener('click', function(e) {
+            const nav = document.querySelector('.nav');
+            if (nav && !nav.contains(e.target)) {
+                document.getElementById('navMenu').classList.remove('open');
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

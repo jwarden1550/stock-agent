@@ -30,6 +30,15 @@ def init_db():
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    ticker TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(user_id, ticker)
+                )
+            """)
         conn.commit()
 
 # ---------- Auth ----------
@@ -76,7 +85,7 @@ def save_report(goal: str, report: str, tool_calls: int, user_id: int = None) ->
         conn.commit()
     return row_id
 
-def get_reports(user_id: int, limit: int = 20):
+def get_reports(user_id: int, limit: int = 50):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -84,3 +93,41 @@ def get_reports(user_id: int, limit: int = 20):
                 (user_id, limit)
             )
             return [dict(r) for r in cur.fetchall()]
+
+def delete_report(report_id: int, user_id: int):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM reports WHERE id = %s AND user_id = %s",
+                (report_id, user_id)
+            )
+        conn.commit()
+
+# ---------- Watchlist ----------
+
+def get_watchlist_tickers(user_id: int):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT ticker FROM watchlist WHERE user_id = %s ORDER BY created_at ASC",
+                (user_id,)
+            )
+            return [r["ticker"] for r in cur.fetchall()]
+
+def add_to_watchlist(user_id: int, ticker: str):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO watchlist (user_id, ticker) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                (user_id, ticker.upper())
+            )
+        conn.commit()
+
+def remove_from_watchlist(user_id: int, ticker: str):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM watchlist WHERE user_id = %s AND ticker = %s",
+                (user_id, ticker.upper())
+            )
+        conn.commit()
