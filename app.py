@@ -259,6 +259,27 @@ def portfolio_edit(position_id):
     update_position(position_id, current_user.id, shares, cost_per_share, purchased_at)
     return jsonify({"ok": True})
 
+from datetime import date as _date, timedelta as _timedelta
+
+def _period_start(period_key):
+    today = _date.today()
+    return {
+        "1d":  today - _timedelta(days=1),
+        "1wk": today - _timedelta(weeks=1),
+        "1m":  today - _timedelta(days=30),
+        "3m":  today - _timedelta(days=90),
+        "6m":  today - _timedelta(days=180),
+        "1y":  today - _timedelta(days=365),
+        "ytd": _date(today.year, 1, 1),
+        "5y":  today - _timedelta(days=365*5),
+        "10y": today - _timedelta(days=365*10),
+    }.get(period_key)  # returns None for "all"
+
+def _interval_for_days(days):
+    if days <= 5:   return "5m"
+    if days <= 730: return "1d"
+    return "1wk"
+
 def _fetch_hist(ticker, period_key, purchased_at=None):
     if period_key == "all" and purchased_at:
         return yf.Ticker(ticker).history(start=str(purchased_at), interval="1d")
@@ -272,15 +293,29 @@ def portfolio_total_chart():
     positions = get_portfolio(current_user.id)
     if not positions:
         return jsonify([])
-    # For "all", use the earliest purchase date across all positions
-    min_date = None
-    if period_key == "all":
-        dates = [p["purchased_at"] for p in positions if p.get("purchased_at")]
-        min_date = min(dates) if dates else None
+
+    # Earliest purchase date across all positions
+    purchase_dates = [p["purchased_at"] for p in positions if p.get("purchased_at")]
+    min_purchased = min(purchase_dates) if purchase_dates else None
+
+    # Period's natural start date (None means "all time")
+    period_start = _period_start(period_key)
+
+    # If the user bought more recently than the period start, or period is "all",
+    # anchor the chart to the purchase date instead
+    if min_purchased and (period_start is None or min_purchased > period_start):
+        start_str = str(min_purchased)
+        days = (_date.today() - min_purchased).days
+        interval = _interval_for_days(days)
+        def get_hist(ticker): return yf.Ticker(ticker).history(start=start_str, interval=interval)
+    else:
+        yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
+        def get_hist(ticker): return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval)
+
     combined = None
     for p in positions:
         shares = float(p["shares"])
-        hist = _fetch_hist(p["ticker"], period_key, min_date)
+        hist = get_hist(p["ticker"])
         if hist.empty:
             continue
         series = (hist["Close"] * shares).rename(p["ticker"])
