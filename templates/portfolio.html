@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio — Stock Research Agent{% endblock %}
+{% block subtitle %}Track your positions and total value{% endblock %}
+
+{% block head %}
+<style>
+    .add-form {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 24px 28px;
+        margin-bottom: 28px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .add-form .field { display: flex; flex-direction: column; gap: 8px; }
+
+    .add-form label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8b949e;
+    }
+
+    .add-form input {
+        padding: 10px 14px;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .add-form input:focus { border-color: #3fb950; }
+    .add-form input::placeholder { color: #484f58; }
+    #tickerInput { width: 130px; text-transform: uppercase; }
+    #sharesInput { width: 130px; }
+
+    .add-error {
+        font-size: 0.8rem;
+        color: #f85149;
+        margin-top: 4px;
+    }
+
+    .summary-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .summary-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 18px 20px;
+    }
+
+    .summary-card .s-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #484f58;
+        margin-bottom: 6px;
+    }
+
+    .summary-card .s-value {
+        font-size: 1.3rem;
+        color: #e6edf3;
+    }
+
+    .summary-card .s-value.up { color: #3fb950; }
+    .summary-card .s-value.down { color: #f85149; }
+
+    .positions-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .positions-table th {
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #484f58;
+        border-bottom: 1px solid #30363d;
+        background: #0d1117;
+    }
+
+    .positions-table td {
+        padding: 14px 16px;
+        font-size: 0.88rem;
+        color: #cdd9e5;
+        border-bottom: 1px solid #1c2128;
+        vertical-align: middle;
+    }
+
+    .positions-table tr:last-child td { border-bottom: none; }
+    .positions-table tr:hover td { background: #1c2128; }
+
+    .positions-table .ticker-col {
+        color: #3fb950;
+        font-weight: bold;
+        letter-spacing: 1px;
+        font-size: 0.92rem;
+    }
+
+    .positions-table .up { color: #3fb950; }
+    .positions-table .down { color: #f85149; }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #484f58;
+        font-size: 0.95rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="add-form">
+    <div class="field">
+        <label for="tickerInput">Ticker</label>
+        <input type="text" id="tickerInput" placeholder="e.g. AAPL" maxlength="10" />
+    </div>
+    <div class="field">
+        <label for="sharesInput">Shares</label>
+        <input type="number" id="sharesInput" placeholder="e.g. 10" min="0.0001" step="any" />
+        <div class="add-error" id="addError"></div>
+    </div>
+    <button class="btn-green" onclick="addPosition()">Add Position</button>
+</div>
+
+<div class="summary-bar" id="summaryBar" style="display:none">
+    <div class="summary-card">
+        <div class="s-label">Total Value</div>
+        <div class="s-value" id="totalValue">—</div>
+    </div>
+    <div class="summary-card">
+        <div class="s-label">Day Change</div>
+        <div class="s-value" id="dayChange">—</div>
+    </div>
+    <div class="summary-card">
+        <div class="s-label">Positions</div>
+        <div class="s-value" id="positionCount">—</div>
+    </div>
+</div>
+
+<table class="positions-table" id="positionsTable" style="display:none">
+    <thead>
+        <tr>
+            <th>Ticker</th>
+            <th>Shares</th>
+            <th>Price</th>
+            <th>Value</th>
+            <th>Day Change</th>
+            <th>30d</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="positionsBody"></tbody>
+</table>
+
+<div class="empty-state" id="emptyState">
+    No positions yet. Add a ticker and share count above.
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('tickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sharesInput').focus(); });
+    document.getElementById('sharesInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPosition(); });
+
+    async function loadPortfolio() {
+        const res = await fetch('/portfolio/data');
+        const positions = await res.json();
+        renderPortfolio(positions);
+    }
+
+    function fmt(n, decimals = 2) {
+        return n != null ? n.toFixed(decimals) : '—';
+    }
+
+    function renderPortfolio(positions) {
+        const table = document.getElementById('positionsTable');
+        const empty = document.getElementById('emptyState');
+        const summary = document.getElementById('summaryBar');
+        const tbody = document.getElementById('positionsBody');
+
+        if (!positions.length) {
+            table.style.display = 'none';
+            summary.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        table.style.display = 'table';
+        summary.style.display = 'grid';
+
+        let totalValue = 0;
+        let totalDayChange = 0;
+
+        tbody.innerHTML = positions.map(p => {
+            const value = p.price != null ? p.price * p.shares : null;
+            const dayChangeVal = (p.price != null && p.change_percent != null)
+                ? (p.price / (1 + p.change_percent / 100)) * p.change_percent / 100 * p.shares
+                : null;
+
+            if (value != null) totalValue += value;
+            if (dayChangeVal != null) totalDayChange += dayChangeVal;
+
+            const changeClass = (p.change_percent || 0) >= 0 ? 'up' : 'down';
+            const perfClass = (p.perf || 0) >= 0 ? 'up' : 'down';
+            const changeSign = (p.change_percent || 0) >= 0 ? '+' : '';
+            const perfSign = (p.perf || 0) >= 0 ? '+' : '';
+
+            return `<tr>
+                <td class="ticker-col">${p.ticker}</td>
+                <td>${p.shares}</td>
+                <td>${p.price != null ? '$' + fmt(p.price) : '—'}</td>
+                <td>${value != null ? '$' + fmt(value) : '—'}</td>
+                <td class="${changeClass}">${p.change_percent != null ? changeSign + fmt(p.change_percent) + '%' : '—'}</td>
+                <td class="${perfClass}">${p.perf != null ? perfSign + fmt(p.perf) + '%' : '—'}</td>
+                <td><button class="btn-danger" onclick="deletePosition(${p.id})">Delete</button></td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('totalValue').textContent = '$' + fmt(totalValue);
+        const dcClass = totalDayChange >= 0 ? 'up' : 'down';
+        const dcSign = totalDayChange >= 0 ? '+' : '';
+        document.getElementById('dayChange').className = 's-value ' + dcClass;
+        document.getElementById('dayChange').textContent = dcSign + '$' + fmt(Math.abs(totalDayChange));
+        document.getElementById('positionCount').textContent = positions.length;
+    }
+
+    async function addPosition() {
+        const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+        const shares = parseFloat(document.getElementById('sharesInput').value);
+        const errEl = document.getElementById('addError');
+        errEl.textContent = '';
+
+        if (!ticker) { errEl.textContent = 'Ticker is required.'; return; }
+        if (!shares || shares <= 0) { errEl.textContent = 'Enter a valid number of shares.'; return; }
+
+        const res = await fetch('/portfolio/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker, shares })
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.error || 'Could not add position.'; return; }
+
+        document.getElementById('tickerInput').value = '';
+        document.getElementById('sharesInput').value = '';
+        await loadPortfolio();
+    }
+
+    async function deletePosition(id) {
+        await fetch(`/portfolio/${id}`, { method: 'DELETE' });
+        await loadPortfolio();
+    }
+
+    loadPortfolio();
+</script>
+{% endblock %}

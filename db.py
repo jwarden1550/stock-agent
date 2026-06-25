@@ -39,6 +39,15 @@ def init_db():
                     UNIQUE(user_id, ticker)
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    ticker TEXT NOT NULL,
+                    shares NUMERIC NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
         conn.commit()
 
 # ---------- Auth ----------
@@ -129,5 +138,36 @@ def remove_from_watchlist(user_id: int, ticker: str):
             cur.execute(
                 "DELETE FROM watchlist WHERE user_id = %s AND ticker = %s",
                 (user_id, ticker.upper())
+            )
+        conn.commit()
+
+# ---------- Portfolio ----------
+
+def get_portfolio(user_id: int):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, ticker, shares FROM portfolio WHERE user_id = %s ORDER BY created_at ASC",
+                (user_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+def add_position(user_id: int, ticker: str, shares: float):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO portfolio (user_id, ticker, shares) VALUES (%s, %s, %s) RETURNING id",
+                (user_id, ticker.upper(), shares)
+            )
+            row_id = cur.fetchone()[0]
+        conn.commit()
+    return row_id
+
+def delete_position(position_id: int, user_id: int):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM portfolio WHERE id = %s AND user_id = %s",
+                (position_id, user_id)
             )
         conn.commit()

@@ -5,7 +5,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from agent import run_agent, get_stock_quote, get_price_history
 from db import (init_db, create_user, get_user_by_email, get_user_by_id,
                 verify_password, save_report, get_reports, delete_report,
-                get_watchlist_tickers, add_to_watchlist, remove_from_watchlist)
+                get_watchlist_tickers, add_to_watchlist, remove_from_watchlist,
+                get_portfolio, add_position, delete_position)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -94,6 +95,11 @@ def watchlist():
 def chart():
     return render_template("chart.html", active="chart")
 
+@app.route("/portfolio")
+@login_required
+def portfolio():
+    return render_template("portfolio.html", active="portfolio")
+
 # ---------- Research API ----------
 
 @app.route("/research", methods=["POST"])
@@ -159,6 +165,57 @@ def watchlist_add():
 @login_required
 def watchlist_remove(ticker):
     remove_from_watchlist(current_user.id, ticker.upper())
+    return jsonify({"ok": True})
+
+# ---------- Portfolio API ----------
+
+@app.route("/portfolio/data")
+@login_required
+def portfolio_data():
+    positions = get_portfolio(current_user.id)
+    results = []
+    for p in positions:
+        try:
+            quote = get_stock_quote(p["ticker"])
+            perf = get_price_history(p["ticker"])
+            results.append({
+                "id": p["id"],
+                "ticker": p["ticker"],
+                "shares": float(p["shares"]),
+                "name": quote.get("name"),
+                "price": quote.get("price"),
+                "change_percent": quote.get("change_percent"),
+                "perf": perf.get("30d_performance_percent"),
+            })
+        except Exception:
+            results.append({"id": p["id"], "ticker": p["ticker"], "shares": float(p["shares"]),
+                            "name": None, "price": None, "change_percent": None, "perf": None})
+    return jsonify(results)
+
+@app.route("/portfolio/add", methods=["POST"])
+@login_required
+def portfolio_add():
+    data = request.get_json()
+    ticker = data.get("ticker", "").strip().upper()
+    shares = data.get("shares")
+    if not ticker:
+        return jsonify({"error": "Ticker is required."}), 400
+    try:
+        shares = float(shares)
+        if shares <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a valid number of shares."}), 400
+    info = yf.Ticker(ticker).info
+    if not info or (not info.get("regularMarketPrice") and not info.get("currentPrice")):
+        return jsonify({"error": f"Could not find ticker '{ticker}'."}), 400
+    add_position(current_user.id, ticker, shares)
+    return jsonify({"ok": True})
+
+@app.route("/portfolio/<int:position_id>", methods=["DELETE"])
+@login_required
+def portfolio_delete(position_id):
+    delete_position(position_id, current_user.id)
     return jsonify({"ok": True})
 
 # ---------- Chart API ----------
