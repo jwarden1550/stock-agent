@@ -6,7 +6,7 @@ from agent import run_agent, get_stock_quote, get_price_history
 from db import (init_db, create_user, get_user_by_email, get_user_by_id,
                 verify_password, save_report, get_reports, delete_report,
                 get_watchlist_tickers, add_to_watchlist, remove_from_watchlist,
-                get_portfolio, add_position, delete_position)
+                get_portfolio, add_position, update_position, delete_position)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -194,13 +194,26 @@ def portfolio_data():
                             "name": None, "price": None, "change_percent": None, "perf": None})
     return jsonify(results)
 
+PERIOD_MAP = {
+    "1d":  ("1d",  "5m"),
+    "1wk": ("5d",  "1h"),
+    "1m":  ("1mo", "1d"),
+    "3m":  ("3mo", "1d"),
+    "6m":  ("6mo", "1d"),
+    "1y":  ("1y",  "1d"),
+    "ytd": ("ytd", "1d"),
+    "5y":  ("5y",  "1wk"),
+    "10y": ("10y", "1mo"),
+    "all": ("max", "1mo"),
+}
+
 @app.route("/portfolio/add", methods=["POST"])
 @login_required
 def portfolio_add():
     data = request.get_json()
     ticker = data.get("ticker", "").strip().upper()
     shares = data.get("shares")
-    cost_per_share = data.get("cost_per_share", 0)
+    total_cost_basis = data.get("total_cost_basis", 0)
     if not ticker:
         return jsonify({"error": "Ticker is required."}), 400
     try:
@@ -210,30 +223,51 @@ def portfolio_add():
     except (TypeError, ValueError):
         return jsonify({"error": "Enter a valid number of shares."}), 400
     try:
-        cost_per_share = float(cost_per_share) if cost_per_share else 0
-        if cost_per_share < 0:
+        total_cost_basis = float(total_cost_basis) if total_cost_basis else 0
+        if total_cost_basis < 0:
             raise ValueError
     except (TypeError, ValueError):
-        return jsonify({"error": "Enter a valid cost per share."}), 400
+        return jsonify({"error": "Enter a valid cost basis."}), 400
     info = yf.Ticker(ticker).info
     if not info or (not info.get("regularMarketPrice") and not info.get("currentPrice")):
         return jsonify({"error": f"Could not find ticker '{ticker}'."}), 400
+    cost_per_share = total_cost_basis / shares if shares else 0
     add_position(current_user.id, ticker, shares, cost_per_share)
+    return jsonify({"ok": True})
+
+@app.route("/portfolio/<int:position_id>", methods=["PUT"])
+@login_required
+def portfolio_edit(position_id):
+    data = request.get_json()
+    shares = data.get("shares")
+    total_cost_basis = data.get("total_cost_basis", 0)
+    try:
+        shares = float(shares)
+        if shares <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a valid number of shares."}), 400
+    try:
+        total_cost_basis = float(total_cost_basis) if total_cost_basis else 0
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a valid cost basis."}), 400
+    cost_per_share = total_cost_basis / shares if shares else 0
+    update_position(position_id, current_user.id, shares, cost_per_share)
     return jsonify({"ok": True})
 
 @app.route("/portfolio/chart")
 @login_required
 def portfolio_total_chart():
+    period_key = request.args.get("period", "1m")
+    yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     positions = get_portfolio(current_user.id)
     if not positions:
         return jsonify([])
     combined = None
-    total_cost = 0
+    total_cost = sum(float(p.get("cost_per_share") or 0) * float(p["shares"]) for p in positions)
     for p in positions:
         shares = float(p["shares"])
-        cost_per_share = float(p.get("cost_per_share") or 0)
-        total_cost += cost_per_share * shares
-        hist = yf.Ticker(p["ticker"]).history(period="1mo")
+        hist = yf.Ticker(p["ticker"]).history(period=yf_period, interval=yf_interval)
         if hist.empty:
             continue
         series = (hist["Close"] * shares).rename(p["ticker"])
@@ -243,24 +277,26 @@ def portfolio_total_chart():
     combined = combined.ffill()
     combined["total"] = combined.sum(axis=1)
     return jsonify([
-        {"date": str(d.date()), "value": round(float(row["total"]), 2), "cost_basis": round(total_cost, 2)}
+        {"date": str(d), "value": round(float(row["total"]), 2), "cost_basis": round(total_cost, 2)}
         for d, row in combined.iterrows()
     ])
 
 @app.route("/portfolio/chart/<int:position_id>")
 @login_required
 def portfolio_position_chart(position_id):
+    period_key = request.args.get("period", "1m")
+    yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     positions = get_portfolio(current_user.id)
     pos = next((p for p in positions if p["id"] == position_id), None)
     if not pos:
         return jsonify({"error": "Not found"}), 404
-    hist = yf.Ticker(pos["ticker"]).history(period="1mo")
+    hist = yf.Ticker(pos["ticker"]).history(period=yf_period, interval=yf_interval)
     if hist.empty:
         return jsonify({"error": "No data"}), 404
     shares = float(pos["shares"])
     cost_basis = float(pos.get("cost_per_share") or 0) * shares
     return jsonify([
-        {"date": str(d.date()), "value": round(float(c) * shares, 2), "cost_basis": round(cost_basis, 2)}
+        {"date": str(d), "value": round(float(c) * shares, 2), "cost_basis": round(cost_basis, 2)}
         for d, c in zip(hist.index, hist["Close"])
     ])
 

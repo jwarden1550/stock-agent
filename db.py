@@ -167,6 +167,15 @@ def add_position(user_id: int, ticker: str, shares: float, cost_per_share: float
         conn.commit()
     return row_id
 
+def update_position(position_id: int, user_id: int, shares: float, cost_per_share: float):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE portfolio SET shares = %s, cost_per_share = %s WHERE id = %s AND user_id = %s",
+                (shares, cost_per_share, position_id, user_id)
+            )
+        conn.commit()
+
 def delete_position(position_id: int, user_id: int):
     with get_connection() as conn:
         with conn.cursor() as cur:

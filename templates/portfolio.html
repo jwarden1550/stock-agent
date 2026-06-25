@@ -6,74 +6,30 @@
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .add-form {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 24px 28px;
-        margin-bottom: 24px;
+    /* ── Period selector ── */
+    .period-bar {
         display: flex;
-        gap: 16px;
-        align-items: flex-end;
+        gap: 6px;
         flex-wrap: wrap;
+        margin-bottom: 14px;
     }
 
-    .add-form .field { display: flex; flex-direction: column; gap: 8px; }
-
-    .add-form label {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .period-btn {
+        padding: 5px 12px;
+        background: transparent;
+        border: 1px solid #30363d;
+        border-radius: 5px;
         color: #8b949e;
-    }
-
-    .add-form input {
-        padding: 10px 14px;
-        background: #0d1117;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-        color: #e6edf3;
-        font-size: 0.95rem;
+        font-size: 0.78rem;
         font-family: inherit;
-        outline: none;
-        transition: border-color 0.2s;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
 
-    .add-form input:focus { border-color: #3fb950; }
-    .add-form input::placeholder { color: #484f58; }
-    #tickerInput { width: 110px; text-transform: uppercase; }
-    #sharesInput, #costInput { width: 120px; }
+    .period-btn:hover { border-color: #8b949e; color: #e6edf3; }
+    .period-btn.active { background: #238636; border-color: #238636; color: #fff; }
 
-    .add-error { font-size: 0.8rem; color: #f85149; margin-top: 4px; }
-
-    .summary-bar {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 12px;
-        margin-bottom: 24px;
-    }
-
-    .summary-card {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 16px 18px;
-    }
-
-    .summary-card .s-label {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #484f58;
-        margin-bottom: 6px;
-    }
-
-    .summary-card .s-value { font-size: 1.15rem; color: #e6edf3; }
-    .summary-card .s-value.up { color: #3fb950; }
-    .summary-card .s-value.down { color: #f85149; }
-    .summary-card .s-sub { font-size: 0.75rem; color: #484f58; margin-top: 3px; }
-
-    /* Total portfolio chart */
+    /* ── Chart card ── */
     .chart-card {
         background: #161b22;
         border: 1px solid #30363d;
@@ -87,26 +43,87 @@
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #8b949e;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
     }
 
-    .chart-wrapper { position: relative; height: 220px; }
+    .chart-wrapper { position: relative; height: 240px; }
 
-    /* Positions table */
+    /* ── Summary bar ── */
+    .summary-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .summary-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 15px 18px;
+    }
+
+    .s-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #484f58; margin-bottom: 5px; }
+    .s-value { font-size: 1.1rem; color: #e6edf3; }
+    .s-value.up { color: #3fb950; }
+    .s-value.down { color: #f85149; }
+    .s-sub { font-size: 0.75rem; color: #484f58; margin-top: 2px; }
+
+    /* ── Add form ── */
+    .add-form {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 22px 28px;
+        margin-bottom: 24px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .add-form .field { display: flex; flex-direction: column; gap: 7px; }
+
+    .add-form label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8b949e;
+    }
+
+    .add-form input {
+        padding: 9px 13px;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        font-size: 0.9rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .add-form input:focus { border-color: #3fb950; }
+    .add-form input::placeholder { color: #484f58; }
+    #tickerInput { width: 110px; text-transform: uppercase; }
+    #sharesInput, #costInput { width: 140px; }
+    .add-error { font-size: 0.78rem; color: #f85149; margin-top: 3px; }
+
+    /* ── Positions table ── */
     .table-wrap {
         background: #161b22;
         border: 1px solid #30363d;
         border-radius: 8px;
-        overflow: hidden;
+        overflow-x: auto;
         margin-bottom: 24px;
     }
 
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
 
     th {
         text-align: left;
-        padding: 11px 14px;
-        font-size: 0.7rem;
+        padding: 10px 14px;
+        font-size: 0.68rem;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #484f58;
@@ -116,8 +133,8 @@
     }
 
     td {
-        padding: 13px 14px;
-        font-size: 0.86rem;
+        padding: 12px 14px;
+        font-size: 0.85rem;
         color: #cdd9e5;
         border-bottom: 1px solid #1c2128;
         vertical-align: middle;
@@ -127,9 +144,19 @@
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #1c2128; }
 
-    .t-ticker { color: #3fb950; font-weight: bold; letter-spacing: 1px; }
+    .t-ticker {
+        color: #3fb950;
+        font-weight: bold;
+        letter-spacing: 1px;
+        cursor: pointer;
+        text-decoration: underline dotted #3fb950;
+    }
+
+    .t-ticker:hover { color: #56d364; }
     .up { color: #3fb950; }
     .down { color: #f85149; }
+
+    .action-btns { display: flex; gap: 6px; }
 
     .empty-state {
         text-align: center;
@@ -138,15 +165,16 @@
         font-size: 0.95rem;
     }
 
-    /* Modal */
+    /* ── Modals ── */
     .modal-overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.75);
         z-index: 200;
         align-items: center;
         justify-content: center;
+        padding: 20px;
     }
 
     .modal-overlay.open { display: flex; }
@@ -156,19 +184,19 @@
         border: 1px solid #30363d;
         border-radius: 10px;
         padding: 28px;
-        width: 90%;
-        max-width: 640px;
+        width: 100%;
+        max-width: 660px;
     }
 
     .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }
 
     .modal-header h3 {
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #3fb950;
@@ -181,44 +209,77 @@
         font-size: 1.3rem;
         cursor: pointer;
         line-height: 1;
+        padding: 0;
     }
 
     .modal-close:hover { color: #e6edf3; }
 
-    .modal-stats {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
+    /* Chart modal */
+    .modal-period-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px; }
+    .modal-period-btn {
+        padding: 4px 10px;
+        background: transparent;
+        border: 1px solid #30363d;
+        border-radius: 4px;
+        color: #8b949e;
+        font-size: 0.72rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
+    .modal-period-btn:hover { border-color: #8b949e; color: #e6edf3; }
+    .modal-period-btn.active { background: #238636; border-color: #238636; color: #fff; }
 
-    .modal-stat .ms-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #484f58; margin-bottom: 4px; }
-    .modal-stat .ms-value { font-size: 0.95rem; color: #e6edf3; }
-    .modal-stat .ms-value.up { color: #3fb950; }
-    .modal-stat .ms-value.down { color: #f85149; }
+    .modal-stats { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+    .ms-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: #484f58; margin-bottom: 3px; }
+    .ms-value { font-size: 0.9rem; color: #e6edf3; }
+    .ms-value.up { color: #3fb950; }
+    .ms-value.down { color: #f85149; }
+    .modal-chart-wrapper { position: relative; height: 220px; }
 
-    .modal-chart-wrapper { position: relative; height: 240px; }
+    /* Edit modal */
+    .edit-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .edit-field label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; }
+    .edit-field input {
+        padding: 10px 14px;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .edit-field input:focus { border-color: #3fb950; }
+    .edit-row { display: flex; gap: 12px; }
+    .edit-error { font-size: 0.8rem; color: #f85149; margin-bottom: 12px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="add-form">
-    <div class="field">
-        <label for="tickerInput">Ticker</label>
-        <input type="text" id="tickerInput" placeholder="AAPL" maxlength="10" />
+
+<!-- Total portfolio chart -->
+<div class="chart-card" id="totalChartCard" style="display:none">
+    <div class="chart-card-title">Portfolio Value vs Cost Basis</div>
+    <div class="period-bar" id="totalPeriodBar">
+        <button class="period-btn" onclick="setTotalPeriod('1d',this)">1D</button>
+        <button class="period-btn" onclick="setTotalPeriod('1wk',this)">1W</button>
+        <button class="period-btn active" onclick="setTotalPeriod('1m',this)">1M</button>
+        <button class="period-btn" onclick="setTotalPeriod('3m',this)">3M</button>
+        <button class="period-btn" onclick="setTotalPeriod('6m',this)">6M</button>
+        <button class="period-btn" onclick="setTotalPeriod('1y',this)">1Y</button>
+        <button class="period-btn" onclick="setTotalPeriod('ytd',this)">YTD</button>
+        <button class="period-btn" onclick="setTotalPeriod('5y',this)">5Y</button>
+        <button class="period-btn" onclick="setTotalPeriod('10y',this)">10Y</button>
+        <button class="period-btn" onclick="setTotalPeriod('all',this)">ALL</button>
     </div>
-    <div class="field">
-        <label for="sharesInput">Shares</label>
-        <input type="number" id="sharesInput" placeholder="10" min="0.0001" step="any" />
+    <div class="chart-wrapper">
+        <canvas id="totalChart"></canvas>
     </div>
-    <div class="field">
-        <label for="costInput">Cost / Share ($)</label>
-        <input type="number" id="costInput" placeholder="0.00" min="0" step="any" />
-        <div class="add-error" id="addError"></div>
-    </div>
-    <button class="btn-green" onclick="addPosition()">Add Position</button>
 </div>
 
+<!-- Summary bar -->
 <div class="summary-bar" id="summaryBar" style="display:none">
     <div class="summary-card">
         <div class="s-label">Total Cost Basis</div>
@@ -243,20 +304,13 @@
     </div>
 </div>
 
-<div class="chart-card" id="totalChartCard" style="display:none">
-    <div class="chart-card-title">30-Day Portfolio Value vs Cost Basis</div>
-    <div class="chart-wrapper">
-        <canvas id="totalChart"></canvas>
-    </div>
-</div>
-
+<!-- Positions table -->
 <div class="table-wrap" id="tableWrap" style="display:none">
     <table>
         <thead>
             <tr>
                 <th>Ticker</th>
                 <th>Shares</th>
-                <th>Cost / Share</th>
                 <th>Cost Basis</th>
                 <th>Price</th>
                 <th>Mkt Value</th>
@@ -271,16 +325,46 @@
     </table>
 </div>
 
-<div class="empty-state" id="emptyState">
-    No positions yet. Add a ticker, share count, and cost per share above.
+<!-- Add form -->
+<div class="add-form">
+    <div class="field">
+        <label for="tickerInput">Ticker</label>
+        <input type="text" id="tickerInput" placeholder="AAPL" maxlength="10" />
+    </div>
+    <div class="field">
+        <label for="sharesInput">Shares</label>
+        <input type="number" id="sharesInput" placeholder="10" min="0.0001" step="any" />
+    </div>
+    <div class="field">
+        <label for="costInput">Total Cost Basis ($)</label>
+        <input type="number" id="costInput" placeholder="1500.00" min="0" step="any" />
+        <div class="add-error" id="addError"></div>
+    </div>
+    <button class="btn-green" onclick="addPosition()">Add Position</button>
 </div>
 
-<!-- Individual position chart modal -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+<div class="empty-state" id="emptyState">
+    No positions yet. Add a ticker, shares, and total cost basis above.
+</div>
+
+<!-- Position chart modal -->
+<div class="modal-overlay" id="chartModal" onclick="closeChartModal(event)">
     <div class="modal">
         <div class="modal-header">
-            <h3 id="modalTitle">Position Chart</h3>
-            <button class="modal-close" onclick="closeModalBtn()">&#x2715;</button>
+            <h3 id="chartModalTitle">Position Chart</h3>
+            <button class="modal-close" onclick="closeModal('chartModal')">&#x2715;</button>
+        </div>
+        <div class="modal-period-bar" id="posPeriodBar">
+            <button class="modal-period-btn" onclick="setPosperiod('1d',this)">1D</button>
+            <button class="modal-period-btn" onclick="setPosperiod('1wk',this)">1W</button>
+            <button class="modal-period-btn active" onclick="setPosperiod('1m',this)">1M</button>
+            <button class="modal-period-btn" onclick="setPosperiod('3m',this)">3M</button>
+            <button class="modal-period-btn" onclick="setPosperiod('6m',this)">6M</button>
+            <button class="modal-period-btn" onclick="setPosperiod('1y',this)">1Y</button>
+            <button class="modal-period-btn" onclick="setPosperiod('ytd',this)">YTD</button>
+            <button class="modal-period-btn" onclick="setPosperiod('5y',this)">5Y</button>
+            <button class="modal-period-btn" onclick="setPosperiod('10y',this)">10Y</button>
+            <button class="modal-period-btn" onclick="setPosperiod('all',this)">ALL</button>
         </div>
         <div class="modal-stats" id="modalStats"></div>
         <div class="modal-chart-wrapper">
@@ -288,28 +372,58 @@
         </div>
     </div>
 </div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="editModal" onclick="closeEditModal(event)">
+    <div class="modal" style="max-width:400px">
+        <div class="modal-header">
+            <h3 id="editModalTitle">Edit Position</h3>
+            <button class="modal-close" onclick="closeModal('editModal')">&#x2715;</button>
+        </div>
+        <div class="edit-row">
+            <div class="edit-field" style="flex:1">
+                <label for="editShares">Shares</label>
+                <input type="number" id="editShares" min="0.0001" step="any" />
+            </div>
+            <div class="edit-field" style="flex:1">
+                <label for="editCost">Total Cost Basis ($)</label>
+                <input type="number" id="editCost" min="0" step="any" />
+            </div>
+        </div>
+        <div class="edit-error" id="editError"></div>
+        <button class="btn-green" onclick="saveEdit()" style="width:100%">Save Changes</button>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
     let totalChartInstance = null;
     let positionChartInstance = null;
+    let activeTotalPeriod = '1m';
+    let activePosPeriod = '1m';
+    let currentPosId = null;
 
+    // Tab key between add fields
     document.getElementById('tickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sharesInput').focus(); });
     document.getElementById('sharesInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('costInput').focus(); });
     document.getElementById('costInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPosition(); });
 
-    function fmt(n, dec = 2) { return n != null ? n.toFixed(dec) : '—'; }
-    function fmtDollar(n) { return n != null ? '$' + Math.abs(n).toFixed(2) : '—'; }
-    function sign(n) { return n >= 0 ? '+' : '-'; }
+    function fmt(n, dec=2) { return n != null ? n.toFixed(dec) : '—'; }
+    function sign(n) { return n >= 0 ? '+' : '−'; }
     function cls(n) { return n >= 0 ? 'up' : 'down'; }
+
+    // ── Load ──────────────────────────────────────────────────
 
     async function loadPortfolio() {
         const res = await fetch('/portfolio/data');
         const positions = await res.json();
         renderPortfolio(positions);
-        if (positions.length) loadTotalChart();
+        if (positions.length) loadTotalChart(activeTotalPeriod);
     }
+
+    // ── Render table ─────────────────────────────────────────
 
     function renderPortfolio(positions) {
         const empty = document.getElementById('emptyState');
@@ -327,6 +441,7 @@
         empty.style.display = 'none';
         summary.style.display = 'grid';
         tableWrap.style.display = 'block';
+        document.getElementById('totalChartCard').style.display = 'block';
 
         let totalCost = 0, totalValue = 0, totalDayChange = 0;
 
@@ -336,29 +451,26 @@
             const pnl = mktValue != null ? mktValue - costBasis : null;
             const pnlPct = costBasis > 0 && pnl != null ? (pnl / costBasis) * 100 : null;
             const dayChange = (p.price != null && p.change_percent != null)
-                ? (p.price / (1 + p.change_percent / 100)) * (p.change_percent / 100) * p.shares
-                : null;
+                ? (p.price / (1 + p.change_percent / 100)) * (p.change_percent / 100) * p.shares : null;
 
             if (costBasis) totalCost += costBasis;
             if (mktValue != null) totalValue += mktValue;
             if (dayChange != null) totalDayChange += dayChange;
 
-            const pnlClass = (pnl || 0) >= 0 ? 'up' : 'down';
-            const dayClass = (p.change_percent || 0) >= 0 ? 'up' : 'down';
-            const perfClass = (p.perf || 0) >= 0 ? 'up' : 'down';
-
             return `<tr>
-                <td class="t-ticker" style="cursor:pointer" onclick="openPositionChart(${p.id}, '${p.ticker}', ${p.shares}, ${p.cost_per_share})">${p.ticker}</td>
+                <td class="t-ticker" onclick="openPositionChart(${p.id},'${p.ticker}')">${p.ticker}</td>
                 <td>${p.shares}</td>
-                <td>${p.cost_per_share > 0 ? '$' + fmt(p.cost_per_share) : '—'}</td>
-                <td>${costBasis > 0 ? '$' + fmt(costBasis) : '—'}</td>
-                <td>${p.price != null ? '$' + fmt(p.price) : '—'}</td>
-                <td>${mktValue != null ? '$' + fmt(mktValue) : '—'}</td>
-                <td class="${pnlClass}">${pnl != null ? sign(pnl) + '$' + fmt(Math.abs(pnl)) : '—'}</td>
-                <td class="${pnlClass}">${pnlPct != null ? sign(pnlPct) + fmt(Math.abs(pnlPct)) + '%' : '—'}</td>
-                <td class="${dayClass}">${p.change_percent != null ? sign(p.change_percent) + fmt(Math.abs(p.change_percent)) + '%' : '—'}</td>
-                <td class="${perfClass}">${p.perf != null ? sign(p.perf) + fmt(Math.abs(p.perf)) + '%' : '—'}</td>
-                <td><button class="btn-danger" onclick="deletePosition(${p.id})">Delete</button></td>
+                <td>${costBasis > 0 ? '$'+fmt(costBasis) : '—'}</td>
+                <td>${p.price != null ? '$'+fmt(p.price) : '—'}</td>
+                <td>${mktValue != null ? '$'+fmt(mktValue) : '—'}</td>
+                <td class="${pnl!=null?cls(pnl):''}">${pnl!=null?sign(pnl)+'$'+fmt(Math.abs(pnl)):'—'}</td>
+                <td class="${pnlPct!=null?cls(pnlPct):''}">${pnlPct!=null?sign(pnlPct)+fmt(Math.abs(pnlPct))+'%':'—'}</td>
+                <td class="${cls(p.change_percent||0)}">${p.change_percent!=null?sign(p.change_percent)+fmt(Math.abs(p.change_percent))+'%':'—'}</td>
+                <td class="${cls(p.perf||0)}">${p.perf!=null?sign(p.perf)+fmt(Math.abs(p.perf))+'%':'—'}</td>
+                <td><div class="action-btns">
+                    <button class="btn-ghost" onclick="openEdit(${p.id},'${p.ticker}',${p.shares},${p.cost_per_share*p.shares})">Edit</button>
+                    <button class="btn-danger" onclick="deletePosition(${p.id})">Delete</button>
+                </div></td>
             </tr>`;
         });
 
@@ -373,157 +485,141 @@
         const pnlEl = document.getElementById('sPnl');
         pnlEl.textContent = sign(totalPnl) + '$' + fmt(Math.abs(totalPnl));
         pnlEl.className = 's-value ' + cls(totalPnl);
-
-        const pnlPctEl = document.getElementById('sPnlPct');
-        pnlPctEl.textContent = totalPnlPct != null ? sign(totalPnlPct) + fmt(Math.abs(totalPnlPct)) + '%' : '';
+        document.getElementById('sPnlPct').textContent = totalPnlPct != null ? sign(totalPnlPct)+fmt(Math.abs(totalPnlPct))+'%' : '';
 
         const dayEl = document.getElementById('sDayChange');
         dayEl.textContent = sign(totalDayChange) + '$' + fmt(Math.abs(totalDayChange));
         dayEl.className = 's-value ' + cls(totalDayChange);
-
         document.getElementById('sCount').textContent = positions.length;
     }
 
-    async function loadTotalChart() {
-        const res = await fetch('/portfolio/chart');
+    // ── Total chart ───────────────────────────────────────────
+
+    async function loadTotalChart(period) {
+        activeTotalPeriod = period;
+        const res = await fetch(`/portfolio/chart?period=${period}`);
         const data = await res.json();
         if (!data.length) return;
 
-        document.getElementById('totalChartCard').style.display = 'block';
-
-        const labels = data.map(d => d.date);
+        const labels = data.map(d => fmtLabel(d.date, period));
         const values = data.map(d => d.value);
         const costLine = data.map(d => d.cost_basis);
-        const isUp = values[values.length - 1] >= costLine[0];
+        const isUp = values[values.length-1] >= costLine[0];
 
         if (totalChartInstance) totalChartInstance.destroy();
-
         const ctx = document.getElementById('totalChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 220);
-        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        const grad = ctx.createLinearGradient(0,0,0,240);
+        grad.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         totalChartInstance = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Portfolio Value',
-                        data: values,
-                        borderColor: isUp ? '#3fb950' : '#f85149',
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Cost Basis',
-                        data: costLine,
-                        borderColor: '#484f58',
-                        borderWidth: 1.5,
-                        borderDash: [5, 4],
-                        pointRadius: 0,
-                        fill: false,
-                        tension: 0
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#8b949e', font: { size: 11 } } },
-                    tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(2)}` } }
-                },
-                scales: {
-                    x: { ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } }, grid: { color: '#1c2128' } },
-                    y: { ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } }, grid: { color: '#1c2128' } }
-                }
-            }
+            data: { labels, datasets: [
+                { label: 'Portfolio Value', data: values, borderColor: isUp?'#3fb950':'#f85149', backgroundColor: grad, borderWidth:2, pointRadius:0, fill:true, tension:0.3 },
+                { label: 'Cost Basis', data: costLine, borderColor:'#484f58', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false }
+            ]},
+            options: chartOptions()
         });
     }
 
-    async function openPositionChart(id, ticker, shares, costPerShare) {
-        const res = await fetch(`/portfolio/chart/${id}`);
-        const data = await res.json();
-        if (!data.length) return;
+    function setTotalPeriod(period, btn) {
+        document.querySelectorAll('#totalPeriodBar .period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadTotalChart(period);
+    }
 
-        const lastValue = data[data.length - 1].value;
-        const costBasis = costPerShare * shares;
-        const pnl = lastValue - costBasis;
-        const pnlPct = costBasis > 0 ? (pnl / costBasis) * 100 : null;
+    // ── Position chart modal ──────────────────────────────────
+
+    async function openPositionChart(id, ticker) {
+        currentPosId = id;
+        document.getElementById('chartModalTitle').textContent = ticker + ' — Position Performance';
+        activePosPeriod = '1m';
+        document.querySelectorAll('#posPeriodBar .modal-period-btn').forEach((b,i) => b.classList.toggle('active', i===2));
+        await loadPosChart(id, '1m');
+        document.getElementById('chartModal').classList.add('open');
+    }
+
+    async function loadPosChart(id, period) {
+        const res = await fetch(`/portfolio/chart/${id}?period=${period}`);
+        const data = await res.json();
+        if (!data.length || data.error) return;
+
         const first = data[0].value;
-        const perf30 = ((lastValue - first) / first) * 100;
+        const last = data[data.length-1].value;
+        const costBasis = data[0].cost_basis;
+        const pnl = last - costBasis;
+        const pnlPct = costBasis > 0 ? (pnl/costBasis)*100 : null;
+        const change = ((last-first)/first)*100;
         const isUp = pnl >= 0;
 
-        document.getElementById('modalTitle').textContent = ticker + ' — 30-Day Performance';
         document.getElementById('modalStats').innerHTML = `
-            <div class="modal-stat"><div class="ms-label">Market Value</div><div class="ms-value">$${fmt(lastValue)}</div></div>
-            <div class="modal-stat"><div class="ms-label">Cost Basis</div><div class="ms-value">${costBasis > 0 ? '$' + fmt(costBasis) : '—'}</div></div>
-            <div class="modal-stat"><div class="ms-label">P&L $</div><div class="ms-value ${cls(pnl)}">${sign(pnl)}$${fmt(Math.abs(pnl))}</div></div>
-            ${pnlPct != null ? `<div class="modal-stat"><div class="ms-label">P&L %</div><div class="ms-value ${cls(pnlPct)}">${sign(pnlPct)}${fmt(Math.abs(pnlPct))}%</div></div>` : ''}
-            <div class="modal-stat"><div class="ms-label">30d Change</div><div class="ms-value ${cls(perf30)}">${sign(perf30)}${fmt(Math.abs(perf30))}%</div></div>
+            <div><div class="ms-label">Market Value</div><div class="ms-value">$${fmt(last)}</div></div>
+            <div><div class="ms-label">Cost Basis</div><div class="ms-value">${costBasis>0?'$'+fmt(costBasis):'—'}</div></div>
+            <div><div class="ms-label">P&L $</div><div class="ms-value ${cls(pnl)}">${sign(pnl)}$${fmt(Math.abs(pnl))}</div></div>
+            ${pnlPct!=null?`<div><div class="ms-label">P&L %</div><div class="ms-value ${cls(pnlPct)}">${sign(pnlPct)}${fmt(Math.abs(pnlPct))}%</div></div>`:''}
+            <div><div class="ms-label">Period Change</div><div class="ms-value ${cls(change)}">${sign(change)}${fmt(Math.abs(change))}%</div></div>
         `;
 
         if (positionChartInstance) positionChartInstance.destroy();
-
         const ctx = document.getElementById('positionChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        const grad = ctx.createLinearGradient(0,0,0,220);
+        grad.addColorStop(0, isUp ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         positionChartInstance = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: data.map(d => d.date),
-                datasets: [
-                    {
-                        label: 'Position Value',
-                        data: data.map(d => d.value),
-                        borderColor: isUp ? '#3fb950' : '#f85149',
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Cost Basis',
-                        data: data.map(d => d.cost_basis),
-                        borderColor: '#484f58',
-                        borderWidth: 1.5,
-                        borderDash: [5, 4],
-                        pointRadius: 0,
-                        fill: false
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#8b949e', font: { size: 11 } } },
-                    tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(2)}` } }
-                },
-                scales: {
-                    x: { ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } }, grid: { color: '#1c2128' } },
-                    y: { ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } }, grid: { color: '#1c2128' } }
-                }
-            }
+            data: { labels: data.map(d => fmtLabel(d.date, period)), datasets: [
+                { label: 'Position Value', data: data.map(d=>d.value), borderColor: isUp?'#3fb950':'#f85149', backgroundColor: grad, borderWidth:2, pointRadius:0, fill:true, tension:0.3 },
+                { label: 'Cost Basis', data: data.map(d=>d.cost_basis), borderColor:'#484f58', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false }
+            ]},
+            options: chartOptions()
         });
-
-        document.getElementById('modalOverlay').classList.add('open');
     }
 
-    function closeModal(e) {
-        if (e.target === document.getElementById('modalOverlay')) closeModalBtn();
+    function setPosperiod(period, btn) {
+        document.querySelectorAll('#posPeriodBar .modal-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activePosPeriod = period;
+        if (currentPosId) loadPosChart(currentPosId, period);
+    }
+    function closeChartModal(e) { if (e.target===document.getElementById('chartModal')) closeModal('chartModal'); }
+    function closeEditModal(e) { if (e.target===document.getElementById('editModal')) closeModal('editModal'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // ── Edit modal ────────────────────────────────────────────
+
+    let editingId = null;
+
+    function openEdit(id, ticker, shares, totalCost) {
+        editingId = id;
+        document.getElementById('editModalTitle').textContent = 'Edit ' + ticker;
+        document.getElementById('editShares').value = shares;
+        document.getElementById('editCost').value = totalCost > 0 ? fmt(totalCost) : '';
+        document.getElementById('editError').textContent = '';
+        document.getElementById('editModal').classList.add('open');
     }
 
-    function closeModalBtn() {
-        document.getElementById('modalOverlay').classList.remove('open');
+    async function saveEdit() {
+        const shares = parseFloat(document.getElementById('editShares').value);
+        const cost = parseFloat(document.getElementById('editCost').value) || 0;
+        const errEl = document.getElementById('editError');
+        errEl.textContent = '';
+
+        if (!shares || shares <= 0) { errEl.textContent = 'Enter a valid number of shares.'; return; }
+
+        const res = await fetch(`/portfolio/${editingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shares, total_cost_basis: cost })
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.error || 'Could not save changes.'; return; }
+
+        closeModal('editModal');
+        await loadPortfolio();
     }
+
+    // ── Add position ──────────────────────────────────────────
 
     async function addPosition() {
         const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
@@ -538,7 +634,7 @@
         const res = await fetch('/portfolio/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker, shares, cost_per_share: cost })
+            body: JSON.stringify({ ticker, shares, total_cost_basis: cost })
         });
         const data = await res.json();
         if (!res.ok) { errEl.textContent = data.error || 'Could not add position.'; return; }
@@ -552,6 +648,31 @@
     async function deletePosition(id) {
         await fetch(`/portfolio/${id}`, { method: 'DELETE' });
         await loadPortfolio();
+    }
+
+    // ── Chart helpers ─────────────────────────────────────────
+
+    function fmtLabel(dateStr, period) {
+        const s = String(dateStr);
+        if (period === '1d') return s.slice(11,16);   // HH:MM
+        if (period === '1wk') return s.slice(5,10);   // MM-DD
+        if (['5y','10y','all'].includes(period)) return s.slice(0,7); // YYYY-MM
+        return s.slice(5,10); // MM-DD
+    }
+
+    function chartOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+                tooltip: { callbacks: { label: c => `$${c.parsed.y.toFixed(2)}` } }
+            },
+            scales: {
+                x: { ticks: { color:'#484f58', maxTicksLimit:7, font:{size:11} }, grid: { color:'#1c2128' } },
+                y: { ticks: { color:'#484f58', callback: v=>`$${v}`, font:{size:11} }, grid: { color:'#1c2128' } }
+            }
+        };
     }
 
     loadPortfolio();
