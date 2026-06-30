@@ -642,9 +642,20 @@
 
         document.getElementById('positionsBody').innerHTML = rows.join('');
 
-        // Summary
-        const totalPnl    = totalValue - totalCost;
-        const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : null;
+        // Summary — P&L % weighted by current market value
+        const totalPnl = totalValue - totalCost;
+        let totalPnlPct = null;
+        if (totalValue > 0) {
+            let weightedPct = 0;
+            for (const p of positions) {
+                const cost = p.cost_per_share * p.shares;
+                const mv   = p.price != null ? p.price * p.shares : null;
+                if (mv == null || cost === 0) continue;
+                const pnlPct = (mv - cost) / cost * 100;
+                weightedPct += pnlPct * (mv / totalValue);
+            }
+            totalPnlPct = weightedPct;
+        }
 
         document.getElementById('sCost').textContent = '$' + fmt(totalCost);
         document.getElementById('sValue').textContent = '$' + fmt(totalValue);
