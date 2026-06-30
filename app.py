@@ -282,7 +282,7 @@ def _interval_for_days(days):
 
 def _fetch_hist(ticker, period_key, purchased_at=None):
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
-    return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval)
+    return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval, prepost=False)
 
 @app.route("/portfolio/chart")
 @login_required
@@ -337,16 +337,17 @@ def portfolio_position_chart(position_id):
         return jsonify({"error": "Not found"}), 404
 
     if period_key == "1d":
-        # Fetch 5 days of 5m bars so we can get yesterday's close as the baseline
-        hist5d = yf.Ticker(pos["ticker"]).history(period="5d", interval="5m")
-        if hist5d.empty:
+        # Use period="2d" so we get yesterday + today; split on index's own timezone
+        # to avoid UTC vs ET mismatch when server runs in UTC
+        hist2d = yf.Ticker(pos["ticker"]).history(period="2d", interval="5m", prepost=False)
+        if hist2d.empty:
             return jsonify({"error": "No data"}), 404
-        today = _date.today()
-        prev_bars  = hist5d[hist5d.index.date < today]
-        today_bars = hist5d[hist5d.index.date == today]
+        # Use the last date in the index as "today" (timezone-safe)
+        last_date_str = hist2d.index[-1].strftime('%Y-%m-%d')
+        today_bars = hist2d[hist2d.index.strftime('%Y-%m-%d') == last_date_str]
+        prev_bars  = hist2d[hist2d.index.strftime('%Y-%m-%d') <  last_date_str]
         result = []
         if not prev_bars.empty:
-            # Prepend prev close with a sentinel date so the frontend can use it as baseline
             result.append({"date": "prev_close", "value": round(float(prev_bars["Close"].iloc[-1]), 2)})
         result.extend([{"date": str(d), "value": round(float(c), 2)} for d, c in zip(today_bars.index, today_bars["Close"])])
         return jsonify(result)
