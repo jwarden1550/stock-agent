@@ -281,8 +281,6 @@ def _interval_for_days(days):
     return "1wk"
 
 def _fetch_hist(ticker, period_key, purchased_at=None):
-    if period_key == "all" and purchased_at:
-        return yf.Ticker(ticker).history(start=str(purchased_at), interval="1d")
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval)
 
