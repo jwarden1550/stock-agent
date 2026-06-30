@@ -400,6 +400,7 @@
     <div class="summary-card">
         <div class="s-label">Day Change</div>
         <div class="s-value sensitive" id="sDayChange">—</div>
+        <div class="s-sub sensitive" id="sDayChangePct"></div>
     </div>
     <div class="summary-card">
         <div class="s-label">Positions</div>
@@ -654,16 +655,22 @@
         document.getElementById('sPnlPct').textContent = totalPnlPct != null
             ? sign(totalPnlPct) + fmt(Math.abs(totalPnlPct)) + '%' : '';
 
+        const prevValue = totalValue - totalDayChange;
+        const dayPct = prevValue > 0 ? (totalDayChange / prevValue) * 100 : null;
+
         const dayEl = document.getElementById('sDayChange');
         dayEl.textContent = sign(totalDayChange) + '$' + fmt(Math.abs(totalDayChange));
         dayEl.className = 's-value sensitive ' + cls(totalDayChange);
+        const dayPctEl = document.getElementById('sDayChangePct');
+        dayPctEl.textContent = dayPct != null ? sign(dayPct) + fmt(Math.abs(dayPct)) + '%' : '';
+        dayPctEl.className = 's-sub sensitive ' + cls(totalDayChange);
         document.getElementById('sCount').textContent = positions.length;
 
         // Chart overlay values
         document.getElementById('chartTotalValue').textContent = '$' + fmt(totalValue);
         const dcEl = document.getElementById('chartDailyChange');
         dcEl.textContent = sign(totalDayChange) + '$' + fmt(Math.abs(totalDayChange))
-            + (totalValue > 0 ? ' (' + sign(totalDayChange/totalValue*100) + fmt(Math.abs(totalDayChange/totalValue*100)) + '%) Today' : ' Today');
+            + (dayPct != null ? ' (' + sign(dayPct) + fmt(Math.abs(dayPct)) + '%) Today' : ' Today');
         dcEl.className = 'chart-daily-change ' + cls(totalDayChange);
     }
 
