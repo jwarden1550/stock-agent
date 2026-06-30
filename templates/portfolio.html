@@ -700,6 +700,8 @@
         });
     }
 
+    const PERIOD_LABEL = { '1d':'Today','1wk':'1W','1m':'1M','3m':'3M','6m':'6M','1y':'1Y','ytd':'YTD','5y':'5Y','10y':'10Y','all':'All' };
+
     function renderTotalChart() {
         if (!totalChartData.length) return;
         const data = activeTotalPeriod === '1d' ? filterMarketHours(totalChartData) : totalChartData;
@@ -728,6 +730,16 @@
             }]},
             options: chartOptions(totalChartMode)
         });
+
+        // Update overlay with period change
+        const first = rawValues[0], last = rawValues[rawValues.length - 1];
+        const periodChange = last - first;
+        const periodPct = first > 0 ? (periodChange / first) * 100 : null;
+        const periodLabel = PERIOD_LABEL[activeTotalPeriod] || activeTotalPeriod;
+        const dcEl = document.getElementById('chartDailyChange');
+        dcEl.textContent = sign(periodChange) + '$' + fmt(Math.abs(periodChange))
+            + (periodPct != null ? ' (' + sign(periodPct) + fmt(Math.abs(periodPct)) + '%) ' + periodLabel : ' ' + periodLabel);
+        dcEl.className = 'chart-daily-change ' + cls(periodChange);
     }
 
     function setTotalPeriod(period, btn) {
