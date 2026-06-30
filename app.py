@@ -338,9 +338,8 @@ def portfolio_position_chart(position_id):
     hist = _fetch_hist(pos["ticker"], period_key, pos.get("purchased_at"))
     if hist.empty:
         return jsonify({"error": "No data"}), 404
-    shares = float(pos["shares"])
     return jsonify([
-        {"date": str(d), "value": round(float(c) * shares, 2)}
+        {"date": str(d), "value": round(float(c), 2)}
         for d, c in zip(hist.index, hist["Close"])
     ])
 

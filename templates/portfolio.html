@@ -811,10 +811,11 @@
         const first = rawValues[0], last = rawValues[rawValues.length - 1];
         const changeDollar = last - first;
         const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
+        const periodLabel = PERIOD_LABEL[activePosPeriod] || activePosPeriod;
         document.getElementById('modalStats').innerHTML = `
-            <div><div class="ms-label">Value</div><div class="ms-value">$${fmt(last)}</div></div>
-            <div><div class="ms-label">Period Change $</div><div class="ms-value ${cls(changeDollar)}">${sign(changeDollar)}$${fmt(Math.abs(changeDollar))}</div></div>
-            <div><div class="ms-label">Period Change %</div><div class="ms-value ${cls(changePct)}">${sign(changePct)}${fmt(Math.abs(changePct))}%</div></div>
+            <div><div class="ms-label">Price</div><div class="ms-value">$${fmt(last)}</div></div>
+            <div><div class="ms-label">${periodLabel} Change $</div><div class="ms-value ${cls(changeDollar)}">${sign(changeDollar)}$${fmt(Math.abs(changeDollar))}</div></div>
+            <div><div class="ms-label">${periodLabel} Change %</div><div class="ms-value ${cls(changePct)}">${sign(changePct)}${fmt(Math.abs(changePct))}%</div></div>
         `;
     }
 
