@@ -366,10 +366,17 @@ def portfolio_delete(position_id):
 def api_prices(ticker):
     period_key = request.args.get("period", "1m")
     if period_key == "1d":
-        hist = yf.Ticker(ticker.upper()).history(period="1d", interval="5m", prepost=False)
-        if hist.empty:
+        hist2d = yf.Ticker(ticker.upper()).history(period="2d", interval="5m", prepost=False)
+        if hist2d.empty:
             return jsonify({"error": f"No price data found for '{ticker}'."}), 404
-        return jsonify([{"date": str(d), "close": round(float(c), 2)} for d, c in zip(hist.index, hist["Close"])])
+        last_date_str = hist2d.index[-1].strftime('%Y-%m-%d')
+        today_bars = hist2d[hist2d.index.strftime('%Y-%m-%d') == last_date_str]
+        prev_bars  = hist2d[hist2d.index.strftime('%Y-%m-%d') <  last_date_str]
+        result = []
+        if not prev_bars.empty:
+            result.append({"date": "prev_close", "close": round(float(prev_bars["Close"].iloc[-1]), 2)})
+        result.extend([{"date": str(d), "close": round(float(c), 2)} for d, c in zip(today_bars.index, today_bars["Close"])])
+        return jsonify(result)
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     hist = yf.Ticker(ticker.upper()).history(period=yf_period, interval=yf_interval, prepost=False)
     if hist.empty:

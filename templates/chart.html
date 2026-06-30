@@ -187,6 +187,7 @@
 
     function filterMarketHours(data) {
         return data.filter(d => {
+            if (String(d.date) === 'prev_close') return false;
             const t = String(d.date).slice(11, 16);
             return t >= '09:30' && t <= '16:00';
         });
@@ -223,7 +224,9 @@
         const prices = raw.map(d => d.close);
         const values = chartMode === '%' ? toPercent(prices) : prices;
 
-        const first = prices[0], last = prices[prices.length - 1];
+        const prevCloseEntry = activePeriod === '1d' && chartData.length && chartData[0].date === 'prev_close' ? chartData[0].close : null;
+        const first = prevCloseEntry !== null ? prevCloseEntry : prices[0];
+        const last = prices[prices.length - 1];
         const changeDollar = last - first;
         const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
         const high = Math.max(...prices), low = Math.min(...prices);
