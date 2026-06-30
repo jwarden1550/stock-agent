@@ -504,6 +504,8 @@
     let totalChartData   = [];
     let posChartData     = [];
     let editingId        = null;
+    let portfolioDayChange = 0;
+    let portfolioDayPct    = null;
     let isLocked         = false;
 
     // ── Tab nav in add form ───────────────────────────────────
@@ -668,6 +670,8 @@
 
         const prevValue = totalValue - totalDayChange;
         const dayPct = prevValue > 0 ? (totalDayChange / prevValue) * 100 : null;
+        portfolioDayChange = totalDayChange;
+        portfolioDayPct    = dayPct;
 
         const dayEl = document.getElementById('sDayChange');
         dayEl.textContent = sign(totalDayChange) + '$' + fmt(Math.abs(totalDayChange));
@@ -732,10 +736,10 @@
         });
 
         // Update overlay with period change
-        const first = rawValues[0], last = rawValues[rawValues.length - 1];
-        const periodChange = last - first;
-        const periodPct = first > 0 ? (periodChange / first) * 100 : null;
+        // For 1D use the yfinance change_percent-based values so it matches the summary bar exactly
         const periodLabel = PERIOD_LABEL[activeTotalPeriod] || activeTotalPeriod;
+        const periodChange = activeTotalPeriod === '1d' ? portfolioDayChange : rawValues[rawValues.length - 1] - rawValues[0];
+        const periodPct    = activeTotalPeriod === '1d' ? portfolioDayPct    : (rawValues[0] > 0 ? (periodChange / rawValues[0]) * 100 : null);
         const dcEl = document.getElementById('chartDailyChange');
         dcEl.textContent = sign(periodChange) + '$' + fmt(Math.abs(periodChange))
             + (periodPct != null ? ' (' + sign(periodPct) + fmt(Math.abs(periodPct)) + '%) ' + periodLabel : ' ' + periodLabel);
