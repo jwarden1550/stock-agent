@@ -284,6 +284,22 @@ def _fetch_hist(ticker, period_key, purchased_at=None):
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval, prepost=False)
 
+def _append_close_16(ticker, rows, key="value"):
+    """Append official 16:00 closing price when the last bar is 15:55."""
+    if not rows or rows[-1]["date"][11:16] != "15:55":
+        return rows
+    try:
+        daily = yf.Ticker(ticker).history(period="1d", interval="1d")
+        if daily.empty:
+            return rows
+        official = round(float(daily["Close"].iloc[-1]), 2)
+        tz = rows[-1]["date"][19:]        # e.g. "-04:00"
+        date = rows[-1]["date"][:10]      # e.g. "2026-06-30"
+        rows.append({"date": f"{date} 16:00:00{tz}", key: official})
+    except Exception:
+        pass
+    return rows
+
 @app.route("/portfolio/chart")
 @login_required
 def portfolio_total_chart():
@@ -340,10 +356,8 @@ def portfolio_position_chart(position_id):
         hist = yf.Ticker(pos["ticker"]).history(period="1d", interval="5m", prepost=False)
         if hist.empty:
             return jsonify({"error": "No data"}), 404
-        return jsonify([
-            {"date": str(d), "value": round(float(c), 2)}
-            for d, c in zip(hist.index, hist["Close"])
-        ])
+        rows = [{"date": str(d), "value": round(float(c), 2)} for d, c in zip(hist.index, hist["Close"])]
+        return jsonify(_append_close_16(pos["ticker"], rows, key="value"))
 
     hist = _fetch_hist(pos["ticker"], period_key, pos.get("purchased_at"))
     if hist.empty:
@@ -376,7 +390,7 @@ def api_prices(ticker):
         if not prev_bars.empty:
             result.append({"date": "prev_close", "close": round(float(prev_bars["Close"].iloc[-1]), 2)})
         result.extend([{"date": str(d), "close": round(float(c), 2)} for d, c in zip(today_bars.index, today_bars["Close"])])
-        return jsonify(result)
+        return jsonify(_append_close_16(ticker.upper(), result, key="close"))
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     hist = yf.Ticker(ticker.upper()).history(period=yf_period, interval=yf_interval, prepost=False)
     if hist.empty:
