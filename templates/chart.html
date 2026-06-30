@@ -180,7 +180,10 @@
 
     function fmtLabel(dateStr, period) {
         const s = String(dateStr);
-        if (period === '1d') return s.slice(11, 16);
+        if (period === '1d') {
+            const t = s.slice(11, 16);
+            return t === '15:55' ? '16:00' : t;
+        }
         if (['5y','10y','all'].includes(period)) return s.slice(0, 7);
         return s.slice(5, 10);
     }
