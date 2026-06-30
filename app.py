@@ -335,6 +335,22 @@ def portfolio_position_chart(position_id):
     pos = next((p for p in positions if p["id"] == position_id), None)
     if not pos:
         return jsonify({"error": "Not found"}), 404
+
+    if period_key == "1d":
+        # Fetch 5 days of 5m bars so we can get yesterday's close as the baseline
+        hist5d = yf.Ticker(pos["ticker"]).history(period="5d", interval="5m")
+        if hist5d.empty:
+            return jsonify({"error": "No data"}), 404
+        today = _date.today()
+        prev_bars  = hist5d[hist5d.index.date < today]
+        today_bars = hist5d[hist5d.index.date == today]
+        result = []
+        if not prev_bars.empty:
+            # Prepend prev close with a sentinel date so the frontend can use it as baseline
+            result.append({"date": "prev_close", "value": round(float(prev_bars["Close"].iloc[-1]), 2)})
+        result.extend([{"date": str(d), "value": round(float(c), 2)} for d, c in zip(today_bars.index, today_bars["Close"])])
+        return jsonify(result)
+
     hist = _fetch_hist(pos["ticker"], period_key, pos.get("purchased_at"))
     if hist.empty:
         return jsonify({"error": "No data"}), 404

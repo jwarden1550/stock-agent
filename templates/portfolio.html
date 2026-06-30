@@ -699,6 +699,7 @@
 
     function filterMarketHours(data) {
         return data.filter(d => {
+            if (String(d.date) === 'prev_close') return false;
             const t = String(d.date).slice(11,16);
             return t >= '09:30' && t <= '16:00';
         });
@@ -807,8 +808,11 @@
             options: chartOptions(posChartMode)
         });
 
-        // Update stats from the same filtered data the chart uses
-        const first = rawValues[0], last = rawValues[rawValues.length - 1];
+        // Update stats — for 1D use prev_close as baseline so change matches standard day-change convention
+        const prevClosePoint = activePosPeriod === '1d' && posChartData.length && posChartData[0].date === 'prev_close'
+            ? posChartData[0].value : null;
+        const first = prevClosePoint !== null ? prevClosePoint : rawValues[0];
+        const last = rawValues[rawValues.length - 1];
         const changeDollar = last - first;
         const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
         const periodLabel = PERIOD_LABEL[activePosPeriod] || activePosPeriod;
