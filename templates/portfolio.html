@@ -808,10 +808,8 @@
             options: chartOptions(posChartMode)
         });
 
-        // Update stats — for 1D use prev_close as baseline so change matches standard day-change convention
-        const prevClosePoint = activePosPeriod === '1d' && posChartData.length && posChartData[0].date === 'prev_close'
-            ? posChartData[0].value : null;
-        const first = prevClosePoint !== null ? prevClosePoint : rawValues[0];
+        // Update stats — use 9:30 open (first filtered point) as baseline for all periods
+        const first = rawValues[0];
         const last = rawValues[rawValues.length - 1];
         const changeDollar = last - first;
         const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
