@@ -772,14 +772,6 @@
         posChartData = await res.json();
         if (!posChartData.length || posChartData.error) return;
         renderPosChart();
-
-        const first = posChartData[0].value, last = posChartData[posChartData.length-1].value;
-        const change = ((last-first)/first)*100;
-        document.getElementById('modalStats').innerHTML = `
-            <div><div class="ms-label">Value</div><div class="ms-value">$${fmt(last)}</div></div>
-            <div><div class="ms-label">Period Change $</div><div class="ms-value ${cls(last-first)}">${sign(last-first)}$${fmt(Math.abs(last-first))}</div></div>
-            <div><div class="ms-label">Period Change %</div><div class="ms-value ${cls(change)}">${sign(change)}${fmt(Math.abs(change))}%</div></div>
-        `;
     }
 
     function renderPosChart() {
@@ -810,6 +802,16 @@
             }]},
             options: chartOptions(posChartMode)
         });
+
+        // Update stats from the same filtered data the chart uses
+        const first = rawValues[0], last = rawValues[rawValues.length - 1];
+        const changeDollar = last - first;
+        const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
+        document.getElementById('modalStats').innerHTML = `
+            <div><div class="ms-label">Value</div><div class="ms-value">$${fmt(last)}</div></div>
+            <div><div class="ms-label">Period Change $</div><div class="ms-value ${cls(changeDollar)}">${sign(changeDollar)}$${fmt(Math.abs(changeDollar))}</div></div>
+            <div><div class="ms-label">Period Change %</div><div class="ms-value ${cls(changePct)}">${sign(changePct)}${fmt(Math.abs(changePct))}%</div></div>
+        `;
     }
 
     function setPosperiod(period, btn) {
