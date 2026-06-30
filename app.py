@@ -337,20 +337,13 @@ def portfolio_position_chart(position_id):
         return jsonify({"error": "Not found"}), 404
 
     if period_key == "1d":
-        # Use period="2d" so we get yesterday + today; split on index's own timezone
-        # to avoid UTC vs ET mismatch when server runs in UTC
-        hist2d = yf.Ticker(pos["ticker"]).history(period="2d", interval="5m", prepost=False)
-        if hist2d.empty:
+        hist = yf.Ticker(pos["ticker"]).history(period="1d", interval="5m", prepost=False)
+        if hist.empty:
             return jsonify({"error": "No data"}), 404
-        # Use the last date in the index as "today" (timezone-safe)
-        last_date_str = hist2d.index[-1].strftime('%Y-%m-%d')
-        today_bars = hist2d[hist2d.index.strftime('%Y-%m-%d') == last_date_str]
-        prev_bars  = hist2d[hist2d.index.strftime('%Y-%m-%d') <  last_date_str]
-        result = []
-        if not prev_bars.empty:
-            result.append({"date": "prev_close", "value": round(float(prev_bars["Close"].iloc[-1]), 2)})
-        result.extend([{"date": str(d), "value": round(float(c), 2)} for d, c in zip(today_bars.index, today_bars["Close"])])
-        return jsonify(result)
+        return jsonify([
+            {"date": str(d), "value": round(float(c), 2)}
+            for d, c in zip(hist.index, hist["Close"])
+        ])
 
     hist = _fetch_hist(pos["ticker"], period_key, pos.get("purchased_at"))
     if hist.empty:

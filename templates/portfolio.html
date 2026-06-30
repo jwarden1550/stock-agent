@@ -699,7 +699,6 @@
 
     function filterMarketHours(data) {
         return data.filter(d => {
-            if (String(d.date) === 'prev_close') return false;
             const t = String(d.date).slice(11,16);
             return t >= '09:30' && t <= '16:00';
         });
