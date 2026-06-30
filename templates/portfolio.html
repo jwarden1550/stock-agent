@@ -675,10 +675,18 @@
         renderTotalChart();
     }
 
+    function filterMarketHours(data) {
+        return data.filter(d => {
+            const t = String(d.date).slice(11,16);
+            return t >= '09:30' && t <= '16:00';
+        });
+    }
+
     function renderTotalChart() {
         if (!totalChartData.length) return;
-        const labels = totalChartData.map(d => fmtLabel(d.date, activeTotalPeriod));
-        const rawValues = totalChartData.map(d => d.value);
+        const data = activeTotalPeriod === '1d' ? filterMarketHours(totalChartData) : totalChartData;
+        const labels = data.map(d => fmtLabel(d.date, activeTotalPeriod));
+        const rawValues = data.map(d => d.value);
         const values = totalChartMode === '%' ? toPercent(rawValues) : rawValues;
         const isUp = values[values.length-1] >= values[0];
 
@@ -746,9 +754,10 @@
 
     function renderPosChart() {
         if (!posChartData.length) return;
-        const rawValues = posChartData.map(d => d.value);
+        const filteredPos = activePosPeriod === '1d' ? filterMarketHours(posChartData) : posChartData;
+        const rawValues = filteredPos.map(d => d.value);
         const values = posChartMode === '%' ? toPercent(rawValues) : rawValues;
-        const labels = posChartData.map(d => fmtLabel(d.date, activePosPeriod));
+        const labels = filteredPos.map(d => fmtLabel(d.date, activePosPeriod));
         const isUp = values[values.length-1] >= values[0];
 
         if (positionChartInstance) positionChartInstance.destroy();
