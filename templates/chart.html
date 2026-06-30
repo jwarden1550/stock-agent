@@ -1,32 +1,19 @@
 {% extends "base.html" %}
 
 {% block title %}Price Chart — Stock Research Agent{% endblock %}
-{% block subtitle %}30-day price history for any stock{% endblock %}
+{% block subtitle %}Historical price data for any stock{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .chart-controls {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 24px 28px;
-        margin-bottom: 24px;
+    .search-bar {
         display: flex;
         gap: 12px;
         align-items: flex-end;
+        margin-bottom: 24px;
     }
 
-    .chart-controls label {
-        display: block;
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #8b949e;
-        margin-bottom: 8px;
-    }
-
-    .chart-controls input {
+    .search-bar input {
         padding: 10px 14px;
         background: #0d1117;
         border: 1px solid #30363d;
@@ -40,93 +27,120 @@
         width: 160px;
     }
 
-    .chart-controls input:focus { border-color: #3fb950; }
-    .chart-controls input::placeholder { color: #484f58; text-transform: none; }
+    .search-bar input:focus { border-color: #3fb950; }
+    .search-bar input::placeholder { color: #484f58; text-transform: none; }
 
-    .chart-box {
-        display: none;
+    .status { font-size: 0.85rem; color: #8b949e; min-height: 18px; margin-bottom: 12px; }
+    .status.error { color: #f85149; }
+
+    .chart-card {
         background: #161b22;
         border: 1px solid #30363d;
         border-radius: 8px;
-        padding: 28px;
+        padding: 24px 28px;
+        display: none;
     }
+    .chart-card.visible { display: block; }
 
-    .chart-box.visible { display: block; }
-
-    .chart-title {
+    .chart-top {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: flex-start;
         margin-bottom: 20px;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
-    .chart-title h2 {
-        font-size: 1rem;
+    .chart-info h2 {
+        font-size: 1.1rem;
         color: #3fb950;
         text-transform: uppercase;
         letter-spacing: 1px;
+        margin-bottom: 4px;
     }
 
     .chart-stats {
         display: flex;
-        gap: 24px;
-        margin-bottom: 24px;
+        gap: 20px;
         flex-wrap: wrap;
+        margin-top: 6px;
     }
 
-    .stat {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .stat-label {
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #484f58;
-    }
-
-    .stat-value {
-        font-size: 1rem;
-        color: #e6edf3;
-    }
-
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: #484f58; }
+    .stat-value { font-size: 0.95rem; color: #e6edf3; }
     .stat-value.up { color: #3fb950; }
     .stat-value.down { color: #f85149; }
 
-    .chart-wrapper {
-        position: relative;
-        height: 300px;
-    }
+    .chart-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 
-    .status {
-        margin-top: 10px;
-        font-size: 0.85rem;
+    .period-bar { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .period-btn {
+        padding: 5px 10px;
+        background: transparent;
+        border: 1px solid #30363d;
+        border-radius: 5px;
         color: #8b949e;
-        min-height: 18px;
+        font-size: 0.78rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
     }
+    .period-btn:hover { border-color: #8b949e; color: #e6edf3; }
+    .period-btn.active { border-color: #3fb950; color: #3fb950; background: rgba(63,185,80,0.08); }
 
-    .status.error { color: #f85149; }
+    .mode-bar { display: flex; gap: 4px; }
+    .mode-btn {
+        padding: 5px 12px;
+        background: transparent;
+        border: 1px solid #30363d;
+        border-radius: 5px;
+        color: #8b949e;
+        font-size: 0.78rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .mode-btn.active { border-color: #3fb950; color: #fff; background: #238636; }
+
+    .chart-wrapper { position: relative; height: 300px; margin-top: 16px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="chart-controls">
+<div class="search-bar">
     <div>
-        <label for="tickerInput">Ticker Symbol</label>
         <input type="text" id="tickerInput" placeholder="e.g. AAPL" maxlength="10" />
     </div>
     <button class="btn-green" onclick="loadChart()">View Chart</button>
 </div>
 <div class="status" id="status"></div>
 
-<div class="chart-box" id="chartBox">
-    <div class="chart-title">
-        <h2 id="chartTitle"></h2>
-        <span id="chartSubtitle" style="font-size:0.8rem;color:#484f58"></span>
+<div class="chart-card" id="chartCard">
+    <div class="chart-top">
+        <div class="chart-info">
+            <h2 id="chartTitle"></h2>
+            <div class="chart-stats" id="chartStats"></div>
+        </div>
+        <div class="chart-controls">
+            <div class="period-bar">
+                <button class="period-btn" onclick="setPeriod('1d',this)">1D</button>
+                <button class="period-btn" onclick="setPeriod('1wk',this)">1W</button>
+                <button class="period-btn active" onclick="setPeriod('1m',this)">1M</button>
+                <button class="period-btn" onclick="setPeriod('3m',this)">3M</button>
+                <button class="period-btn" onclick="setPeriod('6m',this)">6M</button>
+                <button class="period-btn" onclick="setPeriod('1y',this)">1Y</button>
+                <button class="period-btn" onclick="setPeriod('ytd',this)">YTD</button>
+                <button class="period-btn" onclick="setPeriod('5y',this)">5Y</button>
+                <button class="period-btn" onclick="setPeriod('10y',this)">10Y</button>
+                <button class="period-btn" onclick="setPeriod('all',this)">ALL</button>
+            </div>
+            <div class="mode-bar">
+                <button class="mode-btn active" id="modeD" onclick="setMode('$',this)">$</button>
+                <button class="mode-btn" id="modeP" onclick="setMode('%',this)">%</button>
+            </div>
+        </div>
     </div>
-    <div class="chart-stats" id="chartStats"></div>
     <div class="chart-wrapper">
         <canvas id="priceChart"></canvas>
     </div>
@@ -136,12 +150,17 @@
 {% block scripts %}
 <script>
     let chartInstance = null;
+    let chartData     = [];
+    let activePeriod  = '1m';
+    let chartMode     = '$';
+    let activeTicker  = '';
+
+    const PERIOD_LABEL = { '1d':'Today','1wk':'1W','1m':'1M','3m':'3M','6m':'6M','1y':'1Y','ytd':'YTD','5y':'5Y','10y':'10Y','all':'All' };
 
     document.getElementById('tickerInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') loadChart();
     });
 
-    // Pre-fill from query string
     const params = new URLSearchParams(window.location.search);
     const preload = params.get('ticker');
     if (preload) {
@@ -155,101 +174,119 @@
         el.className = 'status' + (isError ? ' error' : '');
     }
 
+    function fmt(n) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function sign(n) { return n >= 0 ? '+' : ''; }
+    function cls(n)  { return n >= 0 ? 'up' : 'down'; }
+
+    function fmtLabel(dateStr, period) {
+        const s = String(dateStr);
+        if (period === '1d') return s.slice(11, 16);
+        if (['5y','10y','all'].includes(period)) return s.slice(0, 7);
+        return s.slice(5, 10);
+    }
+
+    function filterMarketHours(data) {
+        return data.filter(d => {
+            const t = String(d.date).slice(11, 16);
+            return t >= '09:30' && t <= '16:00';
+        });
+    }
+
+    function toPercent(values) {
+        const base = values[0];
+        return values.map(v => base > 0 ? ((v - base) / base) * 100 : 0);
+    }
+
     async function loadChart() {
         const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
         if (!ticker) return;
-
+        activeTicker = ticker;
         setStatus('Loading...');
-        document.getElementById('chartBox').classList.remove('visible');
-
-        const res = await fetch(`/api/prices/${ticker}`);
-        const data = await res.json();
-
-        if (!res.ok) {
-            setStatus(data.error || 'Could not load data.', true);
-            return;
-        }
-
-        setStatus('');
-        renderChart(ticker, data);
+        document.getElementById('chartCard').classList.remove('visible');
+        await fetchAndRender(activePeriod);
     }
 
-    function renderChart(ticker, data) {
-        const labels = data.map(d => d.date);
-        const prices = data.map(d => d.close);
+    async function fetchAndRender(period) {
+        const res = await fetch(`/api/prices/${activeTicker}?period=${period}`);
+        const data = await res.json();
+        if (!res.ok) { setStatus(data.error || 'Could not load data.', true); return; }
+        setStatus('');
+        chartData = data;
+        renderChart();
+        document.getElementById('chartCard').classList.add('visible');
+        document.getElementById('chartTitle').textContent = activeTicker;
+    }
 
-        const first = prices[0];
-        const last = prices[prices.length - 1];
-        const change = ((last - first) / first * 100).toFixed(2);
-        const high = Math.max(...prices).toFixed(2);
-        const low = Math.min(...prices).toFixed(2);
-        const isUp = parseFloat(change) >= 0;
+    function renderChart() {
+        const raw = activePeriod === '1d' ? filterMarketHours(chartData) : chartData;
+        const labels = raw.map(d => fmtLabel(d.date, activePeriod));
+        const prices = raw.map(d => d.close);
+        const values = chartMode === '%' ? toPercent(prices) : prices;
 
-        document.getElementById('chartTitle').textContent = ticker + ' — 30-Day Price';
-        document.getElementById('chartSubtitle').textContent = `${labels[0]} → ${labels[labels.length - 1]}`;
+        const first = prices[0], last = prices[prices.length - 1];
+        const changeDollar = last - first;
+        const changePct = first > 0 ? (changeDollar / first) * 100 : 0;
+        const high = Math.max(...prices), low = Math.min(...prices);
+        const periodLabel = PERIOD_LABEL[activePeriod] || activePeriod;
+        const isUp = changeDollar >= 0;
+
         document.getElementById('chartStats').innerHTML = `
-            <div class="stat">
-                <span class="stat-label">Current</span>
-                <span class="stat-value">$${last.toFixed(2)}</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">30d Change</span>
-                <span class="stat-value ${isUp ? 'up' : 'down'}">${isUp ? '+' : ''}${change}%</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">30d High</span>
-                <span class="stat-value">$${high}</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">30d Low</span>
-                <span class="stat-value">$${low}</span>
-            </div>
+            <div class="stat"><span class="stat-label">Price</span><span class="stat-value">$${fmt(last)}</span></div>
+            <div class="stat"><span class="stat-label">${periodLabel} Change $</span><span class="stat-value ${cls(changeDollar)}">${sign(changeDollar)}$${fmt(Math.abs(changeDollar))}</span></div>
+            <div class="stat"><span class="stat-label">${periodLabel} Change %</span><span class="stat-value ${cls(changePct)}">${sign(changePct)}${fmt(Math.abs(changePct))}%</span></div>
+            <div class="stat"><span class="stat-label">High</span><span class="stat-value">$${fmt(high)}</span></div>
+            <div class="stat"><span class="stat-label">Low</span><span class="stat-value">$${fmt(low)}</span></div>
         `;
 
         if (chartInstance) chartInstance.destroy();
-
         const color = isUp ? '#3fb950' : '#f85149';
         const ctx = document.getElementById('priceChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, isUp ? 'rgba(63,185,80,0.2)' : 'rgba(248,81,73,0.2)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        const grad = ctx.createLinearGradient(0, 0, 0, 300);
+        grad.addColorStop(0, isUp ? 'rgba(63,185,80,0.18)' : 'rgba(248,81,73,0.18)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         chartInstance = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    data: prices,
-                    borderColor: color,
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
+            data: { labels, datasets: [{ data: values, borderColor: color, backgroundColor: grad,
+                borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, fill: true, tension: 0.3 }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: {
-                    callbacks: {
-                        label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1c2128', borderColor: '#30363d', borderWidth: 1,
+                        titleColor: '#8b949e', bodyColor: '#e6edf3', padding: 10,
+                        callbacks: {
+                            label: ctx => chartMode === '$'
+                                ? `  $${ctx.parsed.y.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`
+                                : `  ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+                        }
                     }
-                }},
+                },
                 scales: {
-                    x: {
-                        ticks: { color: '#484f58', maxTicksLimit: 6, font: { size: 11 } },
-                        grid: { color: '#1c2128' }
-                    },
-                    y: {
-                        ticks: { color: '#484f58', callback: v => `$${v}`, font: { size: 11 } },
-                        grid: { color: '#1c2128' }
-                    }
+                    x: { ticks: { color: '#484f58', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#1c2128' } },
+                    y: { ticks: { color: '#484f58', font: { size: 11 },
+                            callback: v => chartMode === '$' ? `$${v.toLocaleString()}` : `${v.toFixed(1)}%`
+                        }, grid: { color: '#1c2128' } }
                 }
             }
         });
+    }
 
-        document.getElementById('chartBox').classList.add('visible');
+    function setPeriod(period, btn) {
+        activePeriod = period;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (activeTicker) fetchAndRender(period);
+    }
+
+    function setMode(mode, btn) {
+        chartMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (chartData.length) renderChart();
     }
 </script>
 {% endblock %}
