@@ -284,20 +284,35 @@ def _fetch_hist(ticker, period_key, purchased_at=None):
     yf_period, yf_interval = PERIOD_MAP.get(period_key, ("1mo", "1d"))
     return yf.Ticker(ticker).history(period=yf_period, interval=yf_interval, prepost=False)
 
+def _get_official_close(ticker):
+    """Return the official latest daily closing price, or None on failure."""
+    try:
+        daily = yf.Ticker(ticker).history(period="1d", interval="1d")
+        if not daily.empty:
+            return round(float(daily["Close"].iloc[-1]), 2)
+    except Exception:
+        pass
+    return None
+
 def _append_close_16(ticker, rows, key="value"):
     """Append official 16:00 closing price when the last bar is 15:55."""
     if not rows or rows[-1]["date"][11:16] != "15:55":
         return rows
-    try:
-        daily = yf.Ticker(ticker).history(period="1d", interval="1d")
-        if daily.empty:
-            return rows
-        official = round(float(daily["Close"].iloc[-1]), 2)
-        tz = rows[-1]["date"][19:]        # e.g. "-04:00"
-        date = rows[-1]["date"][:10]      # e.g. "2026-06-30"
-        rows.append({"date": f"{date} 16:00:00{tz}", key: official})
-    except Exception:
-        pass
+    official = _get_official_close(ticker)
+    if official is None:
+        return rows
+    tz   = rows[-1]["date"][19:]   # e.g. "-04:00"
+    date = rows[-1]["date"][:10]   # e.g. "2026-06-30"
+    rows.append({"date": f"{date} 16:00:00{tz}", key: official})
+    return rows
+
+def _sync_last_price(ticker, rows, key="value"):
+    """Overwrite the last row's price with the official daily close so all periods agree."""
+    if not rows:
+        return rows
+    official = _get_official_close(ticker)
+    if official is not None:
+        rows[-1][key] = official
     return rows
 
 @app.route("/portfolio/chart")
@@ -362,10 +377,8 @@ def portfolio_position_chart(position_id):
     hist = _fetch_hist(pos["ticker"], period_key, pos.get("purchased_at"))
     if hist.empty:
         return jsonify({"error": "No data"}), 404
-    return jsonify([
-        {"date": str(d), "value": round(float(c), 2)}
-        for d, c in zip(hist.index, hist["Close"])
-    ])
+    rows = [{"date": str(d), "value": round(float(c), 2)} for d, c in zip(hist.index, hist["Close"])]
+    return jsonify(_sync_last_price(pos["ticker"], rows, key="value"))
 
 @app.route("/portfolio/<int:position_id>", methods=["DELETE"])
 @login_required
@@ -395,7 +408,8 @@ def api_prices(ticker):
     hist = yf.Ticker(ticker.upper()).history(period=yf_period, interval=yf_interval, prepost=False)
     if hist.empty:
         return jsonify({"error": f"No price data found for '{ticker}'."}), 404
-    return jsonify([{"date": str(d.date()), "close": round(float(c), 2)} for d, c in zip(hist.index, hist["Close"])])
+    rows = [{"date": str(d.date()), "close": round(float(c), 2)} for d, c in zip(hist.index, hist["Close"])]
+    return jsonify(_sync_last_price(ticker.upper(), rows, key="close"))
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
